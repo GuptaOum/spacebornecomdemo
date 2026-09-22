@@ -1,0 +1,608 @@
+import React, { useState, useEffect } from 'react';
+import { Product, CartItem, GstDetails, Order, UserProfile, AppView } from './types';
+import { PRODUCTS, INITIAL_ORDERS } from './data/products';
+import { Header } from './components/Header';
+import { CategoryNav } from './components/CategoryNav';
+import { QuickViewModal } from './components/QuickViewModal';
+import { CartDrawer } from './components/CartDrawer';
+import { Footer } from './components/Footer';
+
+// Views
+import { apiRequest, clearAccessToken, toFrontendOrder } from './lib/api';
+import { HomeView } from './views/HomeView';
+import { CatalogView } from './views/CatalogView';
+import { ProductDetailView } from './views/ProductDetailView';
+import { CartReviewView } from './views/CartReviewView';
+import { CheckoutView } from './views/CheckoutView';
+import { OrdersPortalView } from './views/OrdersPortalView';
+import { InvoiceView } from './views/InvoiceView';
+import { AuthView } from './views/AuthView';
+import { AccountProfileView } from './views/AccountProfileView';
+import { AboutView } from './views/AboutView';
+import { ContactView } from './views/ContactView';
+import { B2BPortalView } from './views/B2BPortalView';
+import { FabricationLabView } from './views/FabricationLabView';
+import { DatasheetLibraryView } from './views/DatasheetLibraryView';
+import { WarrantyPolicyView } from './views/WarrantyPolicyView';
+import { WishlistView } from './views/WishlistView';
+import { CompareView } from './views/CompareView';
+
+export default function App() {
+  // Navigation & View State
+  const [currentView, setCurrentView] = useState<AppView>('home');
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+  const [selectedProduct, setSelectedProduct] = useState<Product>(PRODUCTS[0]);
+  const [selectedCategory, setSelectedCategory] = useState<string>('All Categories');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+
+  // Modals & Drawers
+  const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
+  const [isCartDrawerOpen, setIsCartDrawerOpen] = useState<boolean>(false);
+  const [invoiceModalOrder, setInvoiceModalOrder] = useState<Order | null>(null);
+
+  // Authenticated User Session State
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
+    try {
+      const saved = localStorage.getItem('spaceborn_user_session') || localStorage.getItem('robu_user_session');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.warn('Could not read user from localStorage', e);
+    }
+    // Default initial mock user for seamless demonstration
+    return {
+      id: 'usr-b2b-01',
+      fullName: 'Vikram Joshi',
+      email: 'vikram.j@apexrobotics.io',
+      phone: '+91 98450 82194',
+      accountType: 'business',
+      companyName: 'Apex Robotics Labs LLP',
+      designation: 'Lead Hardware Architect',
+      makerLevel: 'R&D Enterprise Fellow',
+      joinedDate: 'Jan 2023',
+      gstDetails: {
+        enabled: true,
+        legalName: 'Apex Robotics Labs LLP',
+        gstin: '29AABCA9482Q1Z7',
+        pan: 'AABCA9482Q',
+        stateCode: '29',
+        verified: true
+      },
+      addresses: [
+        {
+          id: 'addr-1',
+          fullName: 'Vikram Joshi',
+          companyName: 'Apex Robotics Labs LLP',
+          email: 'vikram.j@apexrobotics.io',
+          phone: '+91 98450 82194',
+          addressLine1: 'Plot 42, Electronic City Phase 1',
+          addressLine2: 'Hardware Incubation Tech Park, Block C-3',
+          city: 'Bengaluru',
+          state: 'Karnataka',
+          pincode: '560100',
+          type: 'business',
+          isDefault: true
+        }
+      ]
+    };
+  });
+
+  // Cart State with initial sample item (N20 Motor) for easy demonstration
+  const [cart, setCart] = useState<CartItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('spaceborn_cart_items') || localStorage.getItem('robu_cart_items');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.warn('Could not read cart from localStorage', e);
+    }
+    // Default initial cart: 2 pcs of N20 motor
+    return [
+      {
+        product: PRODUCTS[0],
+        quantity: 2,
+        unitPrice: PRODUCTS[0].price
+      }
+    ];
+  });
+
+  // Save cart to local storage
+  useEffect(() => {
+    try {
+      localStorage.setItem('spaceborn_cart_items', JSON.stringify(cart));
+    } catch (e) {
+      console.warn('Could not save cart', e);
+    }
+  }, [cart]);
+
+  // B2B GST Details State
+  const [gstDetails, setGstDetails] = useState<GstDetails>({
+    enabled: true,
+    legalName: 'Apex Robotics Labs LLP',
+    gstin: '29AABCA9482Q1Z7',
+    pan: 'AABCA9482Q',
+    stateCode: '29',
+    verified: true
+  });
+
+  // Keep GST & user session synchronized
+  useEffect(() => {
+    if (currentUser) {
+      try {
+        localStorage.setItem('spaceborn_user_session', JSON.stringify(currentUser));
+      } catch (e) {
+        console.warn('Could not persist session', e);
+      }
+      if (currentUser.gstDetails) {
+        setGstDetails(currentUser.gstDetails);
+      }
+    } else {
+      localStorage.removeItem('spaceborn_user_session');
+      localStorage.removeItem('robu_user_session');
+    }
+  }, [currentUser]);
+
+  // Discount & Coupon State
+  const [couponCode, setCouponCode] = useState<string>('MAKER5');
+  const [discountPercent, setDiscountPercent] = useState<number>(5);
+
+  // Wishlist & Compare State
+  const [wishlist, setWishlist] = useState<Product[]>(() => {
+    try {
+      const saved = localStorage.getItem('spaceborn_wishlist');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.warn('Could not read wishlist', e);
+    }
+    return [PRODUCTS[1], PRODUCTS[3]];
+  });
+
+  const [compareList, setCompareList] = useState<Product[]>(() => {
+    try {
+      const saved = localStorage.getItem('spaceborn_compare');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.warn('Could not read compare list', e);
+    }
+    return [PRODUCTS[0], PRODUCTS[7]];
+  });
+
+  const handleRemoveFromWishlist = (productId: string) => {
+    setWishlist(prev => {
+      const updated = prev.filter(p => p.id !== productId);
+      localStorage.setItem('spaceborn_wishlist', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const handleAddToCompare = (product: Product) => {
+    setCompareList(prev => {
+      if (prev.some(p => p.id === product.id)) return prev;
+      if (prev.length >= 4) return prev;
+      const updated = [...prev, product];
+      localStorage.setItem('spaceborn_compare', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const handleClearCompare = () => {
+    setCompareList([]);
+    localStorage.removeItem('spaceborn_compare');
+  };
+
+  const handleRemoveFromCompare = (productId: string) => {
+    setCompareList(prev => {
+      const updated = prev.filter(p => p.id !== productId);
+      localStorage.setItem('spaceborn_compare', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  // Orders State
+  const [orders, setOrders] = useState<Order[]>(INITIAL_ORDERS);
+
+  // Fetch live orders from backend on boot
+  useEffect(() => {
+    apiRequest<any[]>('/orders')
+      .then(data => {
+        if (data.length > 0) {
+          setOrders(data.map(toFrontendOrder));
+        }
+      })
+      .catch(err => {
+        console.warn('Using local initial orders:', err);
+      });
+  }, []);
+
+  // Auth Action Handlers
+  const handleLoginSuccess = (user: UserProfile) => {
+    setCurrentUser(user);
+    if (user.gstDetails) {
+      setGstDetails(user.gstDetails);
+    }
+    setCurrentView('catalog');
+  };
+
+  const handleSignOut = () => {
+    setCurrentUser(null);
+    clearAccessToken();
+    setAuthMode('login');
+    setCurrentView('auth');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleOpenAuth = (mode: 'login' | 'signup' = 'login') => {
+    setAuthMode(mode);
+    setCurrentView('auth');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleUpdateProfile = (updated: UserProfile) => {
+    setCurrentUser(updated);
+    if (updated.gstDetails) {
+      setGstDetails(updated.gstDetails);
+    }
+  };
+
+  // Helper to calculate tier unit price based on quantity
+  const getTierPrice = (product: Product, quantity: number): number => {
+    if (!product.tierPricing || product.tierPricing.length === 0) return product.price;
+    for (let i = product.tierPricing.length - 1; i >= 0; i--) {
+      const tier = product.tierPricing[i];
+      if (quantity >= tier.minQty) {
+        return tier.price;
+      }
+    }
+    return product.price;
+  };
+
+  // Cart Handlers
+  const handleAddToCart = (product: Product, quantity: number = 1) => {
+    setCart(prev => {
+      const existing = prev.find(i => i.product.id === product.id);
+      if (existing) {
+        const newQty = existing.quantity + quantity;
+        const newUnitPrice = getTierPrice(product, newQty);
+        return prev.map(i =>
+          i.product.id === product.id
+            ? { ...i, quantity: newQty, unitPrice: newUnitPrice }
+            : i
+        );
+      } else {
+        const unitPrice = getTierPrice(product, quantity);
+        return [...prev, { product, quantity, unitPrice }];
+      }
+    });
+    setIsCartDrawerOpen(true);
+  };
+
+  const handleBuyNow = (product: Product, quantity: number = 1) => {
+    setCart(prev => {
+      const existing = prev.find(i => i.product.id === product.id);
+      if (existing) {
+        const newQty = existing.quantity + quantity;
+        const newUnitPrice = getTierPrice(product, newQty);
+        return prev.map(i =>
+          i.product.id === product.id
+            ? { ...i, quantity: newQty, unitPrice: newUnitPrice }
+            : i
+        );
+      } else {
+        const unitPrice = getTierPrice(product, quantity);
+        return [...prev, { product, quantity, unitPrice }];
+      }
+    });
+    setCurrentView('checkout');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleUpdateQuantity = (productId: string, quantity: number) => {
+    if (quantity <= 0) {
+      handleRemoveItem(productId);
+      return;
+    }
+    setCart(prev =>
+      prev.map(i => {
+        if (i.product.id === productId) {
+          const unitPrice = getTierPrice(i.product, quantity);
+          return { ...i, quantity, unitPrice };
+        }
+        return i;
+      })
+    );
+  };
+
+  const handleRemoveItem = (productId: string) => {
+    setCart(prev => prev.filter(i => i.product.id !== productId));
+  };
+
+  // Navigation helper
+  const handleNavigate = (view: AppView) => {
+    setCurrentView(view);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Coupon Handler
+  const handleApplyCoupon = (code: string): { success: boolean; message: string } => {
+    const upper = code.trim().toUpperCase();
+    if (upper === 'MAKER5' || upper === 'SPBN5') {
+      setCouponCode(upper);
+      setDiscountPercent(5);
+      return { success: true, message: 'Maker coupon applied: 5% Off entire order!' };
+    } else if (upper === 'SPBN10' || upper === 'SPACEBORN10') {
+      setCouponCode(upper);
+      setDiscountPercent(10);
+      return { success: true, message: 'Spaceborn institutional coupon applied: 10% Off order!' };
+    } else {
+      return { success: false, message: 'Invalid promo code. Try SPBN5 or SPBN10.' };
+    }
+  };
+
+  // Payment Success Handler
+  const handlePaymentSuccess = (newOrder: Order) => {
+    setOrders(prev => [newOrder, ...prev]);
+    setCart([]); // clear cart
+    setCurrentView('orders');
+    setInvoiceModalOrder(newOrder); // open invoice automatically
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Product Selection
+  const handleSelectProduct = (product: Product) => {
+    setSelectedProduct(product);
+    setCurrentView('product');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleSelectCategory = (cat: string) => {
+    setSelectedCategory(cat);
+    setCurrentView('catalog');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col bg-[#f8f9fc] text-slate-800 font-sans antialiased selection:bg-[#EF4F12] selection:text-white">
+      
+      {/* Top Header */}
+      <Header
+        cart={cart}
+        wishlistCount={wishlist.length}
+        compareCount={compareList.length}
+        user={currentUser}
+        onOpenCart={() => setIsCartDrawerOpen(true)}
+        onOpenAuth={handleOpenAuth}
+        onSignOut={handleSignOut}
+        onNavigate={handleNavigate}
+        currentView={currentView}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        selectedCategory={selectedCategory}
+        onSelectCategory={handleSelectCategory}
+        products={PRODUCTS}
+        onSelectProduct={handleSelectProduct}
+      />
+
+      {/* Category Navigation Bar */}
+      <CategoryNav
+        onNavigate={handleNavigate}
+        selectedCategory={selectedCategory}
+        onSelectCategory={handleSelectCategory}
+      />
+
+      {/* Main View Router */}
+      <main className="flex-1">
+        {currentView === 'home' && (
+          <HomeView
+            products={PRODUCTS}
+            onSelectProduct={handleSelectProduct}
+            onAddToCart={handleAddToCart}
+            onQuickView={(p) => setQuickViewProduct(p)}
+            onNavigate={(view) => {
+              setCurrentView(view);
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            onSelectCategory={handleSelectCategory}
+          />
+        )}
+
+        {currentView === 'catalog' && (
+          <CatalogView
+            products={PRODUCTS}
+            onSelectProduct={handleSelectProduct}
+            onAddToCart={handleAddToCart}
+            onQuickView={(p) => setQuickViewProduct(p)}
+            selectedCategory={selectedCategory}
+            onSelectCategory={handleSelectCategory}
+            searchQuery={searchQuery}
+          />
+        )}
+
+        {currentView === 'product' && selectedProduct && (
+          <ProductDetailView
+            product={selectedProduct}
+            allProducts={PRODUCTS}
+            onAddToCart={handleAddToCart}
+            onBuyNow={handleBuyNow}
+            onSelectProduct={handleSelectProduct}
+            onNavigate={(view) => {
+              setCurrentView(view);
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+          />
+        )}
+
+        {currentView === 'cart' && (
+          <CartReviewView
+            cart={cart}
+            gstDetails={gstDetails}
+            onUpdateGstDetails={setGstDetails}
+            onUpdateQuantity={handleUpdateQuantity}
+            onRemoveItem={handleRemoveItem}
+            onProceedToCheckout={() => {
+              setCurrentView('checkout');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            onContinueShopping={() => {
+              setCurrentView('catalog');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            couponCode={couponCode}
+            onApplyCoupon={handleApplyCoupon}
+            discountPercent={discountPercent}
+          />
+        )}
+
+        {currentView === 'checkout' && (
+          <CheckoutView
+            cart={cart}
+            gstDetails={gstDetails}
+            discountPercent={discountPercent}
+            currentUser={currentUser}
+            onOpenAuth={handleOpenAuth}
+            onPaymentSuccess={handlePaymentSuccess}
+            onBackToCart={() => {
+              setCurrentView('cart');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+          />
+        )}
+
+        {currentView === 'orders' && (
+          <OrdersPortalView
+            orders={orders}
+            onViewInvoice={(order) => setInvoiceModalOrder(order)}
+            onNavigate={(view) => {
+              setCurrentView(view);
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+          />
+        )}
+
+        {currentView === 'auth' && (
+          <AuthView
+            currentUser={currentUser}
+            initialMode={authMode}
+            onLoginSuccess={handleLoginSuccess}
+            onNavigate={(view) => {
+              setCurrentView(view);
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+          />
+        )}
+
+        {currentView === 'profile' && currentUser && (
+          <AccountProfileView
+            user={currentUser}
+            onUpdateProfile={handleUpdateProfile}
+            onSignOut={handleSignOut}
+            onNavigate={handleNavigate}
+          />
+        )}
+
+        {currentView === 'b2b' && (
+          <B2BPortalView
+            onNavigate={handleNavigate}
+            onAddToCart={handleAddToCart}
+            onOpenAuth={handleOpenAuth}
+            user={currentUser}
+          />
+        )}
+
+        {currentView === 'fabrication' && (
+          <FabricationLabView
+            onNavigate={handleNavigate}
+            onAddToCart={handleAddToCart}
+          />
+        )}
+
+        {currentView === 'datasheets' && (
+          <DatasheetLibraryView
+            products={PRODUCTS}
+            onSelectProduct={handleSelectProduct}
+            onNavigate={handleNavigate}
+          />
+        )}
+
+        {currentView === 'warranty' && (
+          <WarrantyPolicyView
+            onNavigate={handleNavigate}
+          />
+        )}
+
+        {currentView === 'wishlist' && (
+          <WishlistView
+            wishlist={wishlist}
+            onRemoveFromWishlist={handleRemoveFromWishlist}
+            onAddToCart={handleAddToCart}
+            onNavigate={handleNavigate}
+            onSelectProduct={handleSelectProduct}
+          />
+        )}
+
+        {currentView === 'compare' && (
+          <CompareView
+            compareList={compareList}
+            onRemoveFromCompare={handleRemoveFromCompare}
+            onClearCompare={handleClearCompare}
+            onAddToCompare={handleAddToCompare}
+            onAddToCart={handleAddToCart}
+            onNavigate={handleNavigate}
+            onSelectProduct={handleSelectProduct}
+          />
+        )}
+
+        {currentView === 'about' && (
+          <AboutView
+            onNavigate={handleNavigate}
+          />
+        )}
+
+        {currentView === 'contact' && (
+          <ContactView
+            onNavigate={handleNavigate}
+          />
+        )}
+      </main>
+
+      {/* Cart Drawer Overlay */}
+      <CartDrawer
+        isOpen={isCartDrawerOpen}
+        onClose={() => setIsCartDrawerOpen(false)}
+        cart={cart}
+        onUpdateQuantity={handleUpdateQuantity}
+        onRemoveItem={handleRemoveItem}
+        onProceedToCart={() => {
+          setCurrentView('cart');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+        onProceedToCheckout={() => {
+          setCurrentView('checkout');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+      />
+
+      {/* Quick View Modal */}
+      {quickViewProduct && (
+        <QuickViewModal
+          product={quickViewProduct}
+          onClose={() => setQuickViewProduct(null)}
+          onAddToCart={handleAddToCart}
+          onViewFullDetails={handleSelectProduct}
+        />
+      )}
+
+      {/* GST E-Invoice Modal */}
+      {invoiceModalOrder && (
+        <InvoiceView
+          order={invoiceModalOrder}
+          onClose={() => setInvoiceModalOrder(null)}
+        />
+      )}
+
+      {/* Technical Footer */}
+      <Footer
+        onNavigate={handleNavigate}
+        onSelectCategory={handleSelectCategory}
+      />
+
+    </div>
+  );
+}
