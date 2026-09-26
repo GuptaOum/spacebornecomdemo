@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  createCheckoutOrder,
   createRazorpayOrder,
   verifyPayment,
 } from "../controller/payment.controller.js";
@@ -9,6 +10,7 @@ const router = Router();
 
 router.use(verifyJWT); // Secure payment routes
 
+router.post("/checkout-order", createCheckoutOrder);
 router.post("/create-order", createRazorpayOrder);
 router.post("/verify", verifyPayment);
 

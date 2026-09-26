@@ -26,12 +26,73 @@ import { DatasheetLibraryView } from './views/DatasheetLibraryView';
 import { WarrantyPolicyView } from './views/WarrantyPolicyView';
 import { WishlistView } from './views/WishlistView';
 import { CompareView } from './views/CompareView';
+import { AdminProductsView } from './views/AdminProductsView';
+
+type BackendCatalogProduct = {
+  _id: string;
+  slug: string;
+  name: string;
+  sku: string;
+  category: string;
+  price: number;
+  stock: number;
+  description: string;
+  images?: string[];
+  isAvailable: boolean;
+  specs?: Record<string, any>;
+};
+
+const storefrontCategory: Record<string, string> = {
+  Motors: 'Motors & Drivers',
+  Sensors: 'Sensors & Modules',
+  Controllers: 'Development Boards',
+  Batteries: 'Batteries & Chargers',
+  Structural: 'Robotics & Mechanical',
+  Accessories: 'Components & Hardware',
+};
+
+const toStorefrontProduct = (record: BackendCatalogProduct): Product => {
+  const existing = PRODUCTS.find(product => product.sku === record.sku);
+  const specs = record.specs || {};
+  const category = storefrontCategory[record.category] || 'Components & Hardware';
+  return {
+    id: specs.sourceId || existing?.id || record.slug || record._id,
+    name: record.name,
+    sku: record.sku,
+    category,
+    subCategory: existing?.subCategory || category,
+    price: record.price,
+    originalPrice: existing?.originalPrice,
+    hsn: existing?.hsn || '',
+    gstRate: existing?.gstRate ?? 18,
+    stock: record.stock,
+    rating: existing?.rating ?? 0,
+    reviewsCount: existing?.reviewsCount ?? 0,
+    image: record.images?.[0] || existing?.image || '',
+    gallery: existing?.gallery,
+    description: record.description,
+    features: existing?.features || [],
+    brand: existing?.brand || 'Spaceborn',
+    voltage: existing?.voltage,
+    rpm: existing?.rpm,
+    shaftType: existing?.shaftType,
+    encoder: existing?.encoder,
+    packageIncludes: existing?.packageIncludes || [],
+    tierPricing: specs.tierPricing || existing?.tierPricing,
+    specifications: existing?.specifications || {},
+    pinout: existing?.pinout,
+    datasheetUrl: existing?.datasheetUrl,
+    cadModelUrl: existing?.cadModelUrl,
+    badge: existing?.badge,
+  };
+};
 
 export default function App() {
   // Navigation & View State
   const [currentView, setCurrentView] = useState<AppView>('home');
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [selectedProduct, setSelectedProduct] = useState<Product>(PRODUCTS[0]);
+  const [catalogProducts, setCatalogProducts] = useState<Product[]>(PRODUCTS);
   const [selectedCategory, setSelectedCategory] = useState<string>('All Categories');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
@@ -39,6 +100,17 @@ export default function App() {
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
   const [isCartDrawerOpen, setIsCartDrawerOpen] = useState<boolean>(false);
   const [invoiceModalOrder, setInvoiceModalOrder] = useState<Order | null>(null);
+
+  const refreshCatalog = async () => {
+    try {
+      const result = await apiRequest<{ products: BackendCatalogProduct[] }>('/products?limit=100&sortBy=newest');
+      setCatalogProducts(result.products.map(toStorefrontProduct));
+    } catch (error) {
+      console.warn('Using bundled catalog because the product API is unavailable:', error);
+    }
+  };
+
+  useEffect(() => { void refreshCatalog(); }, []);
 
   // Authenticated User Session State
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
@@ -316,6 +388,10 @@ export default function App() {
 
   // Navigation helper
   const handleNavigate = (view: AppView) => {
+    if (view === 'admin' && currentUser?.role !== 'admin') {
+      handleOpenAuth('login');
+      return;
+    }
     setCurrentView(view);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -376,7 +452,7 @@ export default function App() {
         onSearchChange={setSearchQuery}
         selectedCategory={selectedCategory}
         onSelectCategory={handleSelectCategory}
-        products={PRODUCTS}
+        products={catalogProducts}
         onSelectProduct={handleSelectProduct}
       />
 
@@ -391,7 +467,7 @@ export default function App() {
       <main className="flex-1">
         {currentView === 'home' && (
           <HomeView
-            products={PRODUCTS}
+            products={catalogProducts}
             onSelectProduct={handleSelectProduct}
             onAddToCart={handleAddToCart}
             onQuickView={(p) => setQuickViewProduct(p)}
@@ -405,7 +481,7 @@ export default function App() {
 
         {currentView === 'catalog' && (
           <CatalogView
-            products={PRODUCTS}
+            products={catalogProducts}
             onSelectProduct={handleSelectProduct}
             onAddToCart={handleAddToCart}
             onQuickView={(p) => setQuickViewProduct(p)}
@@ -418,7 +494,7 @@ export default function App() {
         {currentView === 'product' && selectedProduct && (
           <ProductDetailView
             product={selectedProduct}
-            allProducts={PRODUCTS}
+            allProducts={catalogProducts}
             onAddToCart={handleAddToCart}
             onBuyNow={handleBuyNow}
             onSelectProduct={handleSelectProduct}
@@ -478,7 +554,6 @@ export default function App() {
 
         {currentView === 'auth' && (
           <AuthView
-            currentUser={currentUser}
             initialMode={authMode}
             onLoginSuccess={handleLoginSuccess}
             onNavigate={(view) => {
@@ -495,6 +570,10 @@ export default function App() {
             onSignOut={handleSignOut}
             onNavigate={handleNavigate}
           />
+        )}
+
+        {currentView === 'admin' && currentUser?.role === 'admin' && (
+          <AdminProductsView onNavigate={handleNavigate} onCatalogChanged={refreshCatalog} />
         )}
 
         {currentView === 'b2b' && (
@@ -515,7 +594,7 @@ export default function App() {
 
         {currentView === 'datasheets' && (
           <DatasheetLibraryView
-            products={PRODUCTS}
+            products={catalogProducts}
             onSelectProduct={handleSelectProduct}
             onNavigate={handleNavigate}
           />

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CartItem, Address, GstDetails, Order, UserProfile } from '../types';
+import { apiRequest } from '../lib/api';
 import { 
   Lock, 
   CreditCard, 
@@ -9,14 +10,9 @@ import {
   CheckCircle2, 
   AlertCircle, 
   ArrowLeft, 
-  Check, 
   Loader2, 
   ChevronRight,
-  Info,
-  Sparkles,
-  RefreshCw,
-  User,
-  MapPin
+  User
 } from 'lucide-react';
 
 interface CheckoutViewProps {
@@ -79,22 +75,10 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
 
   const [courierOption, setCourierOption] = useState<'bluedart' | 'delhivery'>('bluedart');
 
-  // Stripe Card State
-  const [cardNumber, setCardNumber] = useState('');
-  const [cardExpiry, setCardExpiry] = useState('');
-  const [cardCvc, setCardCvc] = useState('');
-  const [cardholderName, setCardholderName] = useState('VIKRAM JOSHI');
-  const [postalCode, setPostalCode] = useState('560100');
-  const [cardBrand, setCardBrand] = useState<'visa' | 'mastercard' | 'amex' | 'generic'>('generic');
-
-  // Stripe API & Processing State
+  // Razorpay hosted checkout state
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStep, setProcessingStep] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [stripeStatus, setStripeStatus] = useState<{ configured: boolean; mode: string }>({
-    configured: false,
-    mode: 'checking'
-  });
 
   // Calculate pricing
   const totalGrossAmount = cart.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
@@ -105,224 +89,94 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
   const taxableBase = netAmount / 1.18;
   const gstAmount = netAmount - taxableBase;
 
-  // Check Stripe Configuration on server
-  useEffect(() => {
-    fetch('/api/stripe/config')
-      .then(res => res.json())
-      .then(data => {
-        setStripeStatus({
-          configured: data.isLive,
-          mode: data.isLive ? 'Stripe Production/Test Live API' : 'Stripe Verified Sandbox'
-        });
-      })
-      .catch(() => {
-        setStripeStatus({ configured: false, mode: 'Stripe Verified Sandbox' });
-      });
-  }, []);
+  const loadRazorpay = () => new Promise<boolean>((resolve) => {
+    if ((window as any).Razorpay) return resolve(true);
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
 
-  // Format Card Number & detect brand
-  const handleCardNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let val = e.target.value.replace(/\D/g, '').slice(0, 16);
-    
-    // Detect brand
-    if (val.startsWith('4')) setCardBrand('visa');
-    else if (/^5[1-5]/.test(val)) setCardBrand('mastercard');
-    else if (/^3[47]/.test(val)) setCardBrand('amex');
-    else setCardBrand('generic');
-
-    // Add spaces every 4 digits
-    const parts = val.match(/.{1,4}/g);
-    setCardNumber(parts ? parts.join(' ') : val);
-  };
-
-  // Format Expiry
-  const handleExpiryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let val = e.target.value.replace(/\D/g, '').slice(0, 4);
-    if (val.length >= 2) {
-      val = val.slice(0, 2) + '/' + val.slice(2);
-    }
-    setCardExpiry(val);
-  };
-
-  // Quick autofill Stripe test card
-  const fillTestCard = (type: 'success' | 'decline' | '3ds') => {
-    if (type === 'success') {
-      setCardNumber('4242 4242 4242 4242');
-      setCardExpiry('12/28');
-      setCardCvc('888');
-      setCardholderName('VIKRAM JOSHI');
-      setCardBrand('visa');
-      setErrorMessage(null);
-    } else if (type === '3ds') {
-      setCardNumber('4000 0027 6000 3184');
-      setCardExpiry('10/29');
-      setCardCvc('314');
-      setCardholderName('VIKRAM JOSHI (3DS)');
-      setCardBrand('visa');
-      setErrorMessage(null);
-    } else {
-      setCardNumber('4000 0000 0000 0002');
-      setCardExpiry('08/27');
-      setCardCvc('999');
-      setCardholderName('VIKRAM JOSHI (DECLINE)');
-      setCardBrand('visa');
-      setErrorMessage(null);
-    }
-  };
-
-  // Submit Payment to Backend Stripe Endpoint
+  // Razorpay hosts the payment form. The backend signature verification is
+  // required before the app records an order as paid.
   const handleProcessPayment = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
-
-    const cleanCard = cardNumber.replace(/\s/g, '');
-    if (cleanCard.length < 15) {
-      setErrorMessage('Please enter a valid 16-digit card number.');
-      return;
-    }
-    if (cardExpiry.length < 5) {
-      setErrorMessage('Please enter a valid card expiration date (MM/YY).');
-      return;
-    }
-    if (cardCvc.length < 3) {
-      setErrorMessage('Please enter a valid 3 or 4-digit CVC code.');
-      return;
-    }
-
     setIsProcessing(true);
-    setProcessingStep('Connecting to Stripe Payment Intent gateway...');
+    setProcessingStep('Preparing secure Razorpay checkout...');
 
     try {
-      const orderId = `SPBN-${Math.floor(100000 + Math.random() * 900000)}`;
-
-      // Step 1: Call Backend to Create PaymentIntent
-      const intentResponse = await fetch('/api/create-payment-intent', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: grandTotal,
-          currency: 'inr',
-          orderId: orderId,
-          customerEmail: shippingAddress.email,
-          customerName: shippingAddress.fullName,
-          companyName: gstDetails.enabled ? gstDetails.legalName : shippingAddress.companyName,
-          gstin: gstDetails.enabled ? gstDetails.gstin : undefined,
-          items: cart.map(i => ({
-            id: i.product.id,
-            sku: i.product.sku,
-            qty: i.quantity,
-            price: i.unitPrice
-          }))
-        })
-      });
-
-      const intentData = await intentResponse.json();
-
-      if (!intentResponse.ok) {
-        throw new Error(intentData.error || 'Failed to initialize Stripe PaymentIntent');
+      if (!localStorage.getItem('spaceborn_access_token')) {
+        onOpenAuth?.('login');
+        throw new Error('Please sign in to place a real order. Demo sessions cannot be charged.');
       }
+      if (!(await loadRazorpay())) throw new Error('Razorpay Checkout could not load. Check your connection and retry.');
 
-      // Step 2: Simulating / Confirming Payment with Gateway
-      setProcessingStep('Authorizing 256-bit encrypted transaction with card network...');
-      await new Promise(r => setTimeout(r, 900));
+      const checkout = await apiRequest<{ orderId: string; razorpayOrderId: string; amount: number; currency: string; keyId: string }>(
+        '/payment/checkout-order',
+        { method: 'POST', body: JSON.stringify({
+          items: cart.map(({ product, quantity }) => ({ sku: product.sku, quantity })),
+          shippingAddress,
+          discountPercent,
+          courierOption,
+        }) }
+      );
+      setProcessingStep('Choose UPI or card in Razorpay Checkout...');
 
-      // Test decline check
-      if (cleanCard.endsWith('0002')) {
-        throw new Error('Your card was declined. Test card triggered an intentional insufficient funds response.');
-      }
+      const options = {
+        key: checkout.keyId,
+        amount: checkout.amount,
+        currency: checkout.currency,
+        name: 'Spaceborn',
+        description: 'Robotics components order',
+        order_id: checkout.razorpayOrderId,
+        prefill: { name: shippingAddress.fullName, email: shippingAddress.email, contact: shippingAddress.phone },
+        theme: { color: '#EF4F12' },
+        method: { upi: true, card: true, netbanking: true, wallet: true },
+        modal: { ondismiss: () => { setIsProcessing(false); setProcessingStep(''); } },
+        handler: async (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
+          try {
+            setProcessingStep('Verifying payment securely...');
+            await apiRequest('/payment/verify', { method: 'POST', body: JSON.stringify({
+              orderId: checkout.orderId,
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature,
+            }) });
 
-      setProcessingStep('Verifying RBI 3D Secure protocol & generating HSN tax manifest...');
-      await new Promise(r => setTimeout(r, 800));
-
-      setProcessingStep('Allocating BlueDart Air Express Waybill & booking bench QC test...');
-      await new Promise(r => setTimeout(r, 700));
-
-      // Step 3: Construct Complete Order Record
-      const awbNumber = `BD-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}-IN`;
-
-      const newOrder: Order = {
-        id: orderId.toLowerCase(),
-        orderNumber: orderId,
-        date: new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) + ' IST',
-        status: 'placed',
-        currentStageIndex: 0,
-        courier: {
-          provider: courierOption === 'bluedart' ? 'BlueDart Apex Express' : 'Delhivery Surface Cargo',
-          awb: awbNumber,
-          trackingUrl: `https://bluedart.com/track/${awbNumber}`,
-          estimatedDelivery: courierOption === 'bluedart' ? 'Tomorrow by 11:30 AM' : 'Within 3-4 Business Days',
-          currentLocation: 'Spaceborn Mega Fulfillment & QC Hub, Chakan, Pune'
-        },
-        shippingAddress: shippingAddress,
-        gstDetails: gstDetails.enabled ? gstDetails : undefined,
-        items: cart.map(item => {
-          const itemTotal = item.unitPrice * item.quantity;
-          const itemTaxable = itemTotal / 1.18;
-          return {
-            productId: item.product.id,
-            name: item.product.name,
-            sku: item.product.sku,
-            hsn: item.product.hsn,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
-            taxableAmount: parseFloat(itemTaxable.toFixed(2)),
-            gstAmount: parseFloat((itemTotal - itemTaxable).toFixed(2)),
-            total: itemTotal,
-            image: item.product.image
-          };
-        }),
-        payment: {
-          method: 'Stripe Payment Processing',
-          paymentIntentId: intentData.paymentIntentId || `pi_${Date.now()}`,
-          transactionId: `txn_${Math.floor(10000000 + Math.random() * 90000000)}`,
-          status: 'succeeded',
-          amount: grandTotal,
-          currency: 'inr',
-          cardLast4: cleanCard.slice(-4),
-          cardBrand: cardBrand
-        },
-        pricing: {
-          subtotalTaxable: parseFloat(taxableBase.toFixed(2)),
-          igst: parseFloat(gstAmount.toFixed(2)),
-          cgst: 0,
-          sgst: 0,
-          discount: parseFloat(discountAmount.toFixed(2)),
-          shipping: shippingCost,
-          grandTotal: parseFloat(grandTotal.toFixed(2))
-        },
-        telemetryLogs: [
-          {
-            timestamp: 'Just Now',
-            status: 'Payment Succeeded via Stripe',
-            location: 'Stripe Gateway / Spaceborn Central, Pune',
-            notes: `Authorized INR ₹${grandTotal.toFixed(2)} on card ending ${cleanCard.slice(-4)}. GST Tax Invoice linked.`,
-            completed: true
-          },
-          {
-            timestamp: 'Pending',
-            status: 'QC Bench Inspection & Waveform Verification',
-            location: 'Spaceborn Fulfillment QC Laboratory',
-            notes: 'Component batch scheduled for digital multimeter and encoder quadrature test.',
-            completed: false
+            const orderNumber = `SPBN-${checkout.orderId.slice(-6).toUpperCase()}`;
+            const awb = `BD-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}-IN`;
+            const newOrder: Order = {
+              id: checkout.orderId, orderNumber,
+              date: new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) + ' IST',
+              status: 'placed', currentStageIndex: 0,
+              courier: { provider: courierOption === 'bluedart' ? 'BlueDart Apex Express' : 'Delhivery Surface Cargo', awb, trackingUrl: `https://bluedart.com/track/${awb}`, estimatedDelivery: courierOption === 'bluedart' ? 'Tomorrow by 11:30 AM' : 'Within 3-4 Business Days', currentLocation: 'Spaceborn Mega Fulfillment & QC Hub, Chakan, Pune' },
+              shippingAddress, gstDetails: gstDetails.enabled ? gstDetails : undefined,
+              items: cart.map(item => {
+                const total = item.unitPrice * item.quantity;
+                const taxable = total / 1.18;
+                return { productId: item.product.id, name: item.product.name, sku: item.product.sku, hsn: item.product.hsn, quantity: item.quantity, unitPrice: item.unitPrice, taxableAmount: Number(taxable.toFixed(2)), gstAmount: Number((total - taxable).toFixed(2)), total, image: item.product.image };
+              }),
+              payment: { method: 'Razorpay', paymentIntentId: response.razorpay_order_id, transactionId: response.razorpay_payment_id, status: 'succeeded', amount: checkout.amount / 100, currency: checkout.currency.toLowerCase() },
+              pricing: { subtotalTaxable: Number(taxableBase.toFixed(2)), igst: Number(gstAmount.toFixed(2)), cgst: 0, sgst: 0, discount: Number(discountAmount.toFixed(2)), shipping: shippingCost, grandTotal: checkout.amount / 100 },
+              telemetryLogs: [
+                { timestamp: 'Just Now', status: 'Payment Succeeded via Razorpay', location: 'Razorpay Gateway', notes: `Payment ${response.razorpay_payment_id} verified by server.`, completed: true },
+                { timestamp: 'Pending', status: 'QC Bench Inspection & Waveform Verification', location: 'Spaceborn Fulfillment QC Laboratory', notes: 'Component batch scheduled for digital multimeter and encoder quadrature test.', completed: false },
+              ],
+            };
+            setIsProcessing(false);
+            onPaymentSuccess(newOrder);
+          } catch (error: any) {
+            setIsProcessing(false);
+            setErrorMessage(error.message || 'Payment could not be verified. Contact support before retrying.');
           }
-        ]
+        },
       };
-
-      // Save order to backend
-      await fetch('/api/orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newOrder)
-      }).catch(err => console.warn('Could not persist to backend:', err));
-
-      // Trigger success callback
+      new (window as any).Razorpay(options).open();
+    } catch (error: any) {
       setIsProcessing(false);
-      onPaymentSuccess(newOrder);
-
-    } catch (err: any) {
-      console.error('Payment failure:', err);
-      setIsProcessing(false);
-      setErrorMessage(err.message || 'Payment processing failed. Please check your card details and retry.');
+      setErrorMessage(error.message || 'Could not start payment. Please retry.');
     }
   };
 
@@ -478,211 +332,36 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
               )}
             </div>
 
-            {/* Step 3: Stripe Payment Processing Card Form */}
+            {/* Step 3: Razorpay hosted payment methods */}
             <div className="bg-white rounded-2xl border-2 border-slate-200 p-6 shadow-sm space-y-5">
-              
-              {/* Header with Stripe Branding */}
               <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <div className="flex items-center space-x-2">
-                  <CreditCard className="w-5 h-5 text-[#6772e5]" />
-                  <h2 className="text-sm sm:text-base font-black text-slate-900">
-                    Stripe Secure Card Payment
-                  </h2>
+                  <CreditCard className="w-5 h-5 text-[#EF4F12]" />
+                  <h2 className="text-sm sm:text-base font-black text-slate-900">Secure payment</h2>
                 </div>
-                
-                <div className="flex items-center space-x-2">
-                  <span className="text-[11px] font-black text-[#6772e5] tracking-wider uppercase">
-                    stripe
-                  </span>
-                  <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded">
-                    PCI-DSS Level 1
-                  </span>
-                </div>
+                <span className="text-xs font-black text-blue-700">Razorpay</span>
               </div>
-
-              {/* Quick Preset Test Cards helper */}
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
-                <div className="flex items-center justify-between text-[11px] text-slate-600">
-                  <span className="font-bold flex items-center space-x-1">
-                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                    <span>Stripe Sandbox One-Click Test Cards:</span>
-                  </span>
-                  <span className="text-[10px] text-slate-400 font-mono">Instant Autofill</span>
-                </div>
-                <div className="flex flex-wrap gap-2 text-xs">
-                  <button
-                    type="button"
-                    onClick={() => fillTestCard('success')}
-                    className="bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold px-2.5 py-1 rounded-lg transition cursor-pointer text-[11px]"
-                  >
-                    ✓ Success Card (4242)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => fillTestCard('3ds')}
-                    className="bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 font-bold px-2.5 py-1 rounded-lg transition cursor-pointer text-[11px]"
-                  >
-                    ✓ 3D Secure Card
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => fillTestCard('decline')}
-                    className="bg-white hover:bg-rose-50 text-rose-700 border border-rose-200 font-bold px-2.5 py-1 rounded-lg transition cursor-pointer text-[11px]"
-                  >
-                    ✗ Decline Test Card
-                  </button>
-                </div>
+              <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-900">
+                Pay securely using UPI, credit or debit card, net banking, or wallet. Payment details are entered in Razorpay Checkout and are never stored by this site.
               </div>
-
-              {/* Credit Card Form */}
-              <form onSubmit={handleProcessPayment} className="space-y-4">
-                
-                {/* Cardholder Name */}
-                <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">
-                    Cardholder Name (As on Card)
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={cardholderName}
-                    onChange={(e) => setCardholderName(e.target.value.toUpperCase())}
-                    placeholder="VIKRAM JOSHI"
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 outline-none focus:border-[#6772e5] focus:bg-white transition"
-                  />
+              {errorMessage && (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 flex items-start space-x-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" /><span>{errorMessage}</span>
                 </div>
-
-                {/* Card Number Input */}
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-xs font-bold text-slate-700">
-                      Card Number
-                    </label>
-                    <span className="text-[11px] font-bold text-slate-500 uppercase font-mono">
-                      {cardBrand}
-                    </span>
-                  </div>
-                  <div className="relative flex items-center">
-                    <input
-                      type="text"
-                      required
-                      value={cardNumber}
-                      onChange={handleCardNumberChange}
-                      placeholder="4242 4242 4242 4242"
-                      className="w-full pl-3.5 pr-12 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-mono font-bold text-slate-900 tracking-wider outline-none focus:border-[#6772e5] focus:bg-white transition"
-                    />
-                    <div className="absolute right-3 text-slate-400">
-                      <Lock className="w-4 h-4" />
-                    </div>
-                  </div>
+              )}
+              {isProcessing && (
+                <div className="p-4 bg-orange-50 border border-orange-200 rounded-xl space-y-2">
+                  <div className="flex items-center space-x-2 text-xs font-bold text-[#EF4F12]"><Loader2 className="w-4 h-4 animate-spin" /><span>Preparing payment...</span></div>
+                  <p className="text-[11px] text-slate-600">{processingStep}</p>
                 </div>
-
-                {/* Expiry, CVC & ZIP in one row */}
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <label className="text-xs font-bold text-slate-700 block mb-1">
-                      Expires
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={cardExpiry}
-                      onChange={handleExpiryChange}
-                      placeholder="MM/YY"
-                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-900 text-center outline-none focus:border-[#6772e5] focus:bg-white transition"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-bold text-slate-700 block mb-1">
-                      CVC / CVV
-                    </label>
-                    <input
-                      type="password"
-                      required
-                      maxLength={4}
-                      value={cardCvc}
-                      onChange={(e) => setCardCvc(e.target.value.replace(/\D/g, ''))}
-                      placeholder="•••"
-                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-900 text-center outline-none focus:border-[#6772e5] focus:bg-white transition"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-bold text-slate-700 block mb-1">
-                      Postal Code
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={postalCode}
-                      onChange={(e) => setPostalCode(e.target.value)}
-                      placeholder="560100"
-                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-900 text-center outline-none focus:border-[#6772e5] focus:bg-white transition"
-                    />
-                  </div>
-                </div>
-
-                {/* Error Banner */}
-                {errorMessage && (
-                  <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 flex items-start space-x-2">
-                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                    <span>{errorMessage}</span>
-                  </div>
-                )}
-
-                {/* Live Processing Indicator */}
-                {isProcessing && (
-                  <div className="p-4 bg-orange-50 border border-orange-200 rounded-xl space-y-2">
-                    <div className="flex items-center space-x-2 text-xs font-bold text-[#EF4F12]">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Processing Stripe Payment...</span>
-                    </div>
-                    <p className="text-[11px] text-slate-600 font-mono animate-pulse">
-                      {processingStep}
-                    </p>
-                  </div>
-                )}
-
-                {/* Submit CTA Button */}
-                <button
-                  type="submit"
-                  disabled={isProcessing}
-                  className={`w-full py-3.5 px-4 rounded-xl font-bold text-sm flex items-center justify-center space-x-2 transition-all shadow-md cursor-pointer ${
-                    isProcessing
-                      ? 'bg-slate-400 text-white cursor-not-allowed'
-                      : 'bg-[#EF4F12] hover:bg-[#d44000] text-white shadow-orange-500/25'
-                  }`}
-                >
-                  {isProcessing ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Authorizing Payment...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Lock className="w-4 h-4" />
-                      <span>Pay ₹{grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })} with Stripe</span>
-                    </>
-                  )}
+              )}
+              <form onSubmit={handleProcessPayment}>
+                <button type="submit" disabled={isProcessing} className={`w-full py-3.5 px-4 rounded-xl font-bold text-sm flex items-center justify-center space-x-2 transition-all shadow-md ${isProcessing ? 'bg-slate-400 text-white cursor-not-allowed' : 'bg-[#EF4F12] hover:bg-[#d44000] text-white shadow-orange-500/25 cursor-pointer'}`}>
+                  {isProcessing ? <><Loader2 className="w-4 h-4 animate-spin" /><span>Continue in Razorpay...</span></> : <><Lock className="w-4 h-4" /><span>Pay INR {grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })} with UPI or card</span></>}
                 </button>
-
-                {/* Security Footer */}
-                <div className="pt-2 flex items-center justify-center space-x-4 text-[10px] text-slate-500">
-                  <span className="flex items-center space-x-1">
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>256-Bit SSL Encryption</span>
-                  </span>
-                  <span>•</span>
-                  <span>Stripe Gateway v2025</span>
-                  <span>•</span>
-                  <span>Reserve Bank of India Compliant</span>
-                </div>
-
               </form>
-
+              <div className="flex items-center justify-center space-x-2 text-[10px] text-slate-500"><ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /><span>Payment is confirmed by our server before order success.</span></div>
             </div>
-
           </div>
 
           {/* Right Column: Order Manifest & Summary (5 cols) */}

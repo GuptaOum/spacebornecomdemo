@@ -62,6 +62,7 @@ export interface Address {
 
 export interface UserProfile {
   id: string;
+  role?: 'customer' | 'admin';
   fullName: string;
   email: string;
   phone: string;
@@ -171,7 +172,8 @@ export type AppView =
   | 'datasheets'
   | 'warranty'
   | 'wishlist'
-  | 'compare';
+  | 'compare'
+  | 'admin';
 
 export interface BomItem {
   id: string;

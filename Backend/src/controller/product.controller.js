@@ -48,6 +48,37 @@ const createProduct = asyncHandler(async (req, res) => {
   );
 });
 
+const updateProduct = asyncHandler(async (req, res) => {
+  const { name, slug, description, price, stock, category, sku, specs, images, isAvailable } = req.body;
+
+  if ([name, slug, description, category, sku].some((field) => typeof field !== "string" || !field.trim())) {
+    throw new ApiError(400, "Name, slug, description, category, and SKU are required");
+  }
+  if (!PRODUCT_CATEGORIES.includes(category)) throw new ApiError(400, "Invalid product category");
+  if (!Number.isFinite(Number(price)) || Number(price) < 0) throw new ApiError(400, "Price must be a non-negative number");
+  if (!Number.isInteger(Number(stock)) || Number(stock) < 0) throw new ApiError(400, "Stock must be a non-negative integer");
+
+  const duplicate = await Product.findOne({
+    _id: { $ne: req.params.id },
+    $or: [{ slug: slug.trim().toLowerCase() }, { sku: sku.trim().toUpperCase() }],
+  });
+  if (duplicate) throw new ApiError(409, "Another product already uses this slug or SKU");
+
+  const product = await Product.findByIdAndUpdate(
+    req.params.id,
+    {
+      name: name.trim(), slug: slug.trim().toLowerCase(), description: description.trim(),
+      price: Number(price), stock: Number(stock), category, sku: sku.trim().toUpperCase(),
+      specs: specs || {}, images: Array.isArray(images) ? images : [],
+      isAvailable: isAvailable !== false,
+    },
+    { new: true, runValidators: true },
+  );
+  if (!product) throw new ApiError(404, "Product not found");
+
+  return res.status(200).json(new ApiResponse(200, product, "Product updated successfully"));
+});
+
 const searchAndFilterProducts = asyncHandler(async (req, res) => {
   const { query, category, minPrice, maxPrice, sortBy = "newest" } = req.query;
   const page = positiveInteger(req.query.page, 1, 100000);
@@ -110,4 +141,9 @@ const searchAndFilterProducts = asyncHandler(async (req, res) => {
   }, "Products searched and filtered successfully"));
 });
 
-export { createProduct, searchAndFilterProducts };
+const listAdminProducts = asyncHandler(async (_req, res) => {
+  const products = await Product.find().sort({ createdAt: -1 });
+  return res.status(200).json(new ApiResponse(200, { products }, "Product catalog loaded"));
+});
+
+export { createProduct, updateProduct, searchAndFilterProducts, listAdminProducts };

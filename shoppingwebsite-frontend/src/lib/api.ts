@@ -35,11 +35,11 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}): Pr
   return payload.data;
 }
 
-type BackendUser = { _id: string; fullName: string; email: string; createdAt?: string };
+type BackendUser = { _id: string; fullName: string; email: string; role?: 'customer' | 'admin'; createdAt?: string };
 
 export function toUserProfile(user: BackendUser): UserProfile {
   return {
-    id: user._id, fullName: user.fullName, email: user.email, phone: '',
+    id: user._id, role: user.role || 'customer', fullName: user.fullName, email: user.email, phone: '',
     accountType: 'individual', addresses: [],
     joinedDate: user.createdAt
       ? new Date(user.createdAt).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })

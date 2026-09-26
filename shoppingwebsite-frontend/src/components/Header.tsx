@@ -284,6 +284,18 @@ export const Header: React.FC<HeaderProps> = ({
                   </div>
 
                   <div className="py-1 text-xs">
+                    {user.role === 'admin' && (
+                      <button
+                        onClick={() => {
+                          onNavigate('admin');
+                          setShowAccountMenu(false);
+                        }}
+                        className="w-full text-left px-4 py-2 hover:bg-orange-50 flex items-center space-x-2.5 text-[#c43b0b] font-bold transition cursor-pointer"
+                      >
+                        <ShieldCheck className="w-4 h-4" />
+                        <span>Admin Product Management</span>
+                      </button>
+                    )}
                     <button 
                       onClick={() => {
                         onNavigate('profile');
