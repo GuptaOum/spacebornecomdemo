@@ -21,8 +21,11 @@ import {
   ChevronRight,
   ArrowRight,
   Sparkles,
-  Edit3
+  Edit3,
+  Clock
 } from 'lucide-react';
+
+
 
 interface VendorPortalViewProps {
   products: Product[];
@@ -155,9 +158,12 @@ export const VendorPortalView: React.FC<VendorPortalViewProps> = ({
     }, 1200);
   };
 
+  // Derive vendor-specific products
+  const vendorProducts = vendorStore ? products.filter(p => p.vendorId === vendorStore.id) : [];
+
   // Stats calculation
-  const totalInventoryUnits = products.reduce((acc, p) => acc + p.stock, 0);
-  const totalCatalogValue = products.reduce((acc, p) => acc + p.price * p.stock, 0);
+  const totalInventoryUnits = vendorProducts.reduce((acc, p) => acc + p.stock, 0);
+  const totalCatalogValue = vendorProducts.reduce((acc, p) => acc + p.price * p.stock, 0);
 
   if (!user || user.role !== 'vendor') {
     return (
@@ -634,7 +640,7 @@ export const VendorPortalView: React.FC<VendorPortalViewProps> = ({
 
             {/* Products Table */}
             <div className="divide-y divide-[#f9bf8f]/30 border border-[#f9bf8f]/40 rounded-2xl overflow-hidden bg-white">
-              {products.map((p) => (
+              {vendorProducts.map((p) => (
                 <div key={p.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-[#fee9d7]/20 transition">
                   {/* Left: Image & Info */}
                   <div className="flex items-center space-x-3.5 min-w-0 flex-1">

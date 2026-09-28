@@ -60,18 +60,36 @@ interface StoreContextType {
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
 const MOCK_VENDORS = [
-  { id: 'v-1', name: 'ElectroHub', city: 'Bangalore' },
-  { id: 'v-2', name: 'TechComponents', city: 'Pune' },
-  { id: 'v-3', name: 'Kanpur Robotics', city: 'Kanpur' },
-  { id: 'v-4', name: 'Delhi Makers', city: 'Delhi' },
-  { id: 'v-5', name: 'Chennai Electronics', city: 'Chennai' },
-  { id: 'v-6', name: 'Noida Parts', city: 'Noida' },
-  { id: 'v-7', name: 'HydraTech', city: 'Hyderabad' }
+  { id: 'v-1', name: 'ElectroHub', city: 'Bangalore', rating: 4.8, deliveryMins: 12 },
+  { id: 'v-2', name: 'TechComponents', city: 'Pune', rating: 4.5, deliveryMins: 15 },
+  { id: 'v-3', name: 'Kanpur Robotics', city: 'Kanpur', rating: 4.9, deliveryMins: 10 },
+  { id: 'v-4', name: 'Delhi Makers', city: 'Delhi', rating: 4.2, deliveryMins: 20 },
+  { id: 'v-5', name: 'Chennai Electronics', city: 'Chennai', rating: 4.7, deliveryMins: 14 }
 ];
 
-const ENRICHED_PRODUCTS = PRODUCTS.map((p, index) => {
-  const vendor = MOCK_VENDORS[index % MOCK_VENDORS.length];
-  return { ...p, vendorId: vendor.id, vendorName: vendor.name, city: vendor.city };
+// Instead of simple round-robin, we duplicate the catalog for the top 3 cities so they all have inventory!
+// This makes the app actually "work" when you switch cities, showing distinct local stores.
+const ENRICHED_PRODUCTS: Product[] = [];
+const TARGET_CITIES = ['Kanpur', 'Bangalore', 'Pune'];
+
+PRODUCTS.forEach((product) => {
+  TARGET_CITIES.forEach((city) => {
+    const localVendor = MOCK_VENDORS.find(v => v.city === city)!;
+    // slightly randomize prices and stock per vendor to make it feel like a real marketplace
+    const localPriceOffset = Math.floor(Math.random() * 20) - 10;
+    
+    ENRICHED_PRODUCTS.push({
+      ...product,
+      id: `${product.id}-${localVendor.id}`, // Unique ID per vendor listing
+      vendorId: localVendor.id,
+      vendorName: localVendor.name,
+      city: localVendor.city,
+      price: product.price + localPriceOffset,
+      stock: Math.floor(Math.random() * 50) + 5,
+      deliveryMins: localVendor.deliveryMins,
+      rating: localVendor.rating
+    });
+  });
 });
 
 export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
