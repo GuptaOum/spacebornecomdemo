@@ -31,6 +31,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = (role: 'customer' | 'vendor' | 'admin', email: string, name: string, city: string = 'Bangalore') => {
+    // 🚀 FIREBASE INTEGRATION POINT 🚀
+    // Example: signInWithEmailAndPassword(auth, email, password).then(res => ...)
+    // For now, we continue using the mocked context until real keys are provided.
+    
     const newUser: UserProfile = {
       id: `u-${Date.now()}`,
       role,
