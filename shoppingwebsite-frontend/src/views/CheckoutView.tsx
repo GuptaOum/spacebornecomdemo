@@ -100,7 +100,7 @@ export function CheckoutView({ onNavigate }: CheckoutViewProps) {
             <h3 className="font-bold text-[#34222e] mb-3">Order Summary</h3>
             <div className="space-y-2 mb-4 max-h-48 overflow-y-auto">
               {cart.map((item) => (
-                <div key={item.id} className="flex justify-between text-sm">
+                <div key={item.product.id} className="flex justify-between text-sm">
                   <span className="text-[#7a6274] truncate pr-2">
                     {item.quantity}x {item.product.name}
                   </span>

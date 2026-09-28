@@ -563,14 +563,8 @@ export default function App() {
 
         {currentView === 'checkout' && (
           <CheckoutView
-            cart={cart}
-            gstDetails={gstDetails}
-            discountPercent={discountPercent}
-            currentUser={currentUser}
-            onOpenAuth={handleOpenAuth}
-            onPaymentSuccess={handlePaymentSuccess}
-            onBackToCart={() => {
-              setCurrentView('cart');
+            onNavigate={(view) => {
+              setCurrentView(view);
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
           />
