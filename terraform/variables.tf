@@ -13,3 +13,9 @@ variable "firebase_api_key" {
   type        = string
   description = "Firebase Web API Key"
 }
+
+variable "ecr_image_uri" {
+  type        = string
+  description = "The URI of the Docker image in ECR"
+}
+

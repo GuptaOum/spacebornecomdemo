@@ -473,6 +473,16 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const appType = process.env.NEXT_PUBLIC_APP_TYPE || 'PUBLIC';
+
+  if (appType === 'ADMIN') {
+    return (
+      <div className="min-h-screen bg-slate-50 antialiased font-sans">
+        <AdminProductsView onNavigate={() => {}} />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-[#fee9d7] text-[#34222e] font-sans antialiased selection:bg-[#e2434b] selection:text-white">
       

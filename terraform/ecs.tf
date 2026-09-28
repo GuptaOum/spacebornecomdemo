@@ -31,7 +31,7 @@ resource "aws_ecs_task_definition" "public_app" {
 
   container_definitions = jsonencode([{
     name      = "public-frontend"
-    image     = "nginx:latest" # Placeholder for spaceborn-frontend image
+    image     = var.ecr_image_uri
     essential = true
     portMappings = [{
       containerPort = 3000
@@ -39,6 +39,7 @@ resource "aws_ecs_task_definition" "public_app" {
       protocol      = "tcp"
     }]
     environment = [
+      { name = "NEXT_PUBLIC_APP_TYPE", value = "PUBLIC" },
       { name = "NEXT_PUBLIC_SUPABASE_URL", value = var.supabase_url },
       { name = "NEXT_PUBLIC_SUPABASE_ANON_KEY", value = var.supabase_anon_key },
       { name = "NEXT_PUBLIC_FIREBASE_API_KEY", value = var.firebase_api_key }
@@ -57,7 +58,7 @@ resource "aws_ecs_task_definition" "admin_app" {
 
   container_definitions = jsonencode([{
     name      = "admin-frontend"
-    image     = "nginx:latest" # Placeholder for spaceborn-admin image
+    image     = var.ecr_image_uri
     essential = true
     portMappings = [{
       containerPort = 4000
@@ -65,6 +66,7 @@ resource "aws_ecs_task_definition" "admin_app" {
       protocol      = "tcp"
     }]
     environment = [
+      { name = "NEXT_PUBLIC_APP_TYPE", value = "ADMIN" },
       { name = "NEXT_PUBLIC_SUPABASE_URL", value = var.supabase_url },
       { name = "NEXT_PUBLIC_SUPABASE_ANON_KEY", value = var.supabase_anon_key }
     ]
