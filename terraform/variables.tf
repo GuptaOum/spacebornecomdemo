@@ -19,3 +19,8 @@ variable "ecr_image_uri" {
   description = "The URI of the Docker image in ECR"
 }
 
+variable "ecr_celery_image_uri" {
+  type        = string
+  description = "The URI of the Celery Docker image in ECR"
+}
+

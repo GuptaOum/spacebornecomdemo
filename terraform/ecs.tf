@@ -42,7 +42,9 @@ resource "aws_ecs_task_definition" "public_app" {
       { name = "NEXT_PUBLIC_APP_TYPE", value = "PUBLIC" },
       { name = "NEXT_PUBLIC_SUPABASE_URL", value = var.supabase_url },
       { name = "NEXT_PUBLIC_SUPABASE_ANON_KEY", value = var.supabase_anon_key },
-      { name = "NEXT_PUBLIC_FIREBASE_API_KEY", value = var.firebase_api_key }
+      { name = "NEXT_PUBLIC_FIREBASE_API_KEY", value = var.firebase_api_key },
+      { name = "RABBITMQ_URL", value = "amqp://guest:guest@rabbitmq.spaceborn.local:5672/" },
+      { name = "REDIS_URL", value = "redis://redis.spaceborn.local:6379/0" }
     ]
   }])
 }
@@ -68,7 +70,9 @@ resource "aws_ecs_task_definition" "admin_app" {
     environment = [
       { name = "NEXT_PUBLIC_APP_TYPE", value = "ADMIN" },
       { name = "NEXT_PUBLIC_SUPABASE_URL", value = var.supabase_url },
-      { name = "NEXT_PUBLIC_SUPABASE_ANON_KEY", value = var.supabase_anon_key }
+      { name = "NEXT_PUBLIC_SUPABASE_ANON_KEY", value = var.supabase_anon_key },
+      { name = "RABBITMQ_URL", value = "amqp://guest:guest@rabbitmq.spaceborn.local:5672/" },
+      { name = "REDIS_URL", value = "redis://redis.spaceborn.local:6379/0" }
     ]
   }])
 }
