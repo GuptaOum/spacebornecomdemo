@@ -29,6 +29,11 @@ SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 NEXT_PUBLIC_FIREBASE_API_KEY=your_firebase_key
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_firebase_domain
 NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_firebase_project_id
+
+# Stripe Payment Gateway API Keys
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_your_stripe_publishable_key
+STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key
+STRIPE_WEBHOOK_SECRET=whsec_your_stripe_webhook_secret
 EOT
     echo "Please edit the .env file with your actual keys before running docker-compose."
 fi
