@@ -7,11 +7,13 @@ variable "supabase_url" {
 variable "supabase_anon_key" {
   type        = string
   description = "Supabase Anon Key"
+  default     = ""
 }
 
 variable "firebase_api_key" {
   type        = string
   description = "Firebase Web API Key"
+  default     = ""
 }
 
 variable "ecr_image_uri" {
