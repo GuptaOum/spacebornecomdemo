@@ -49,7 +49,6 @@ const SAMPLE_PRESET_IMAGES = [
 ];
 
 import { useAuth } from '../context/AuthContext';
-import { Clock } from 'lucide-react';
 
 export const VendorPortalView: React.FC<VendorPortalViewProps> = ({
   products,
