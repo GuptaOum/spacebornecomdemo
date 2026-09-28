@@ -23,7 +23,7 @@ aws ecr get-login-password --region $REGION | docker login --username AWS --pass
 
 echo "Building Spaceborn Next.js image..."
 cd ..
-docker build -t spaceborn-frontend -f shoppingwebsite-frontend/Dockerfile .
+docker build -t spaceborn-frontend -f shoppingwebsite-frontend/Dockerfile ./shoppingwebsite-frontend
 echo "Tagging and pushing Next.js image to ECR..."
 docker tag spaceborn-frontend:latest $REPO_URI:latest
 docker push $REPO_URI:latest
