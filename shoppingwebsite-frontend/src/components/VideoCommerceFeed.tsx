@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import React, { useState, useRef } from 'react';
 import { ProductVideoReel, Product } from '../types';
 import { VIDEO_REELS_DATA } from '../data/videoReels';
@@ -112,7 +112,7 @@ export const VideoCommerceFeed: React.FC<VideoCommerceFeedProps> = ({
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-600"></span>
             </span>
             <span className="text-[11px] font-black uppercase tracking-widest text-rose-600 flex items-center gap-1">
-              <Flame className="w-3.5 h-3.5 fill-rose-600" /> Watch & Buy â€¢ Quick Lab Shorts
+              <Flame className="w-3.5 h-3.5 fill-rose-600" /> Watch & Buy • Quick Lab Shorts
             </span>
           </div>
           <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
@@ -384,7 +384,7 @@ export const VideoCommerceFeed: React.FC<VideoCommerceFeedProps> = ({
                         {activeReel.discountPercent}% OFF
                       </span>
                     </div>
-                    <p className="text-[10px] text-[#34222e]/70 mt-0.5 font-medium">Incl. 18% GST â€¢ GST Invoice Available</p>
+                    <p className="text-[10px] text-[#34222e]/70 mt-0.5 font-medium">Incl. 18% GST • GST Invoice Available</p>
                   </div>
                 </div>
 

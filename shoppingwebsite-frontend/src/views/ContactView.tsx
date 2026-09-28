@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import React, { useState } from 'react';
 import { 
   PhoneCall, 
@@ -67,7 +67,7 @@ export const ContactView: React.FC<ContactViewProps> = ({ onNavigate }) => {
               <span>Engineers Live on Technical Desk</span>
             </div>
             <div className="text-lg font-black tracking-tight text-white">+91 080 4912 8800</div>
-            <p className="text-slate-400 text-[11px]">Mon - Sat: 9:30 AM â€“ 6:30 PM IST</p>
+            <p className="text-slate-400 text-[11px]">Mon - Sat: 9:30 AM – 6:30 PM IST</p>
           </div>
         </div>
 
@@ -248,7 +248,7 @@ export const ContactView: React.FC<ContactViewProps> = ({ onNavigate }) => {
                       Call Me
                     </button>
                   </div>
-                  <span className="text-[10px] text-slate-500 block">Available 9:30 AM â€“ 6:30 PM IST Mon-Sat</span>
+                  <span className="text-[10px] text-slate-500 block">Available 9:30 AM – 6:30 PM IST Mon-Sat</span>
                 </form>
               )}
             </div>

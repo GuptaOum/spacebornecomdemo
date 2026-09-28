@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import React, { useState, useEffect } from 'react';
 import { CartItem, Address, GstDetails, Order, UserProfile } from '../types';
 import { apiRequest } from '../lib/api';
@@ -279,7 +279,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
               </div>
 
               <div className="text-xs text-slate-700 space-y-1">
-                <p className="font-bold text-slate-900">{shippingAddress.companyName || shippingAddress.fullName} â€” {shippingAddress.fullName}</p>
+                <p className="font-bold text-slate-900">{shippingAddress.companyName || shippingAddress.fullName} — {shippingAddress.fullName}</p>
                 <p>{shippingAddress.addressLine1}{shippingAddress.addressLine2 ? `, ${shippingAddress.addressLine2}` : ''}</p>
                 <p>{shippingAddress.city}, {shippingAddress.state} - <strong className="font-mono">{shippingAddress.pincode}</strong></p>
                 <p className="text-slate-500 font-mono">Contact: {shippingAddress.phone} | {shippingAddress.email}</p>
@@ -384,7 +384,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
                       />
                       <div className="min-w-0">
                         <p className="font-bold text-slate-900 truncate">{item.product.name}</p>
-                        <p className="text-[10px] text-slate-500 font-mono">Qty: {item.quantity} Ã— ₹{item.unitPrice}</p>
+                        <p className="text-[10px] text-slate-500 font-mono">Qty: {item.quantity} × ₹{item.unitPrice}</p>
                       </div>
                     </div>
                     <span className="font-mono font-bold text-slate-900 shrink-0">

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import React, { useState } from 'react';
 import { 
   Building2, 
@@ -151,10 +151,10 @@ SEN-TF-LUNA-LIDAR, 5`
               <span>Institutional Volume Discount Tiers</span>
             </div>
             <div className="space-y-1 text-slate-300">
-              <p>â€¢ 10+ Units: <strong>5% Instant Off</strong></p>
-              <p>â€¢ 25+ Units: <strong>10% Instant Off</strong></p>
-              <p>â€¢ 50+ Units: <strong>15% Instant Off</strong></p>
-              <p>â€¢ 100+ Units: <strong>Contract PO Pricing</strong></p>
+              <p>• 10+ Units: <strong>5% Instant Off</strong></p>
+              <p>• 25+ Units: <strong>10% Instant Off</strong></p>
+              <p>• 50+ Units: <strong>15% Instant Off</strong></p>
+              <p>• 100+ Units: <strong>Contract PO Pricing</strong></p>
             </div>
           </div>
         </div>

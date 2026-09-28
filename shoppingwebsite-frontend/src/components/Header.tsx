@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Product, CartItem, UserProfile, AppView } from '../types';
@@ -83,7 +83,7 @@ export const Header: React.FC<HeaderProps> = ({
     return () => clearInterval(interval);
   }, [placeholders.length]);
 
-  // âŒ˜K keyboard shortcut support
+  // ⌘K keyboard shortcut support
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
@@ -164,7 +164,7 @@ export const Header: React.FC<HeaderProps> = ({
                   </button>
                 ) : (
                   <kbd className="px-1.5 py-0.5 rounded bg-white border border-[#f9bf8f]/60 text-[#7a6274] font-mono text-[10px]">
-                    âŒ˜K
+                    ⌘K
                   </kbd>
                 )}
               </div>
@@ -311,7 +311,7 @@ export const Header: React.FC<HeaderProps> = ({
               <span>{cartItemsCount > 0 ? `${cartItemsCount} items` : 'Cart'}</span>
               {cartItemsCount > 0 && (
                 <>
-                  <span className="text-white/60 text-xs">â€¢</span>
+                  <span className="text-white/60 text-xs">•</span>
                   <span className="font-bold text-xs text-white">
                     ₹{cartSubtotal.toLocaleString('en-IN')}
                   </span>

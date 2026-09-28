@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import React, { useState } from 'react';
 import { AlertCircle, Eye, EyeOff, Loader2, LockKeyhole, Mail, UserRound } from 'lucide-react';
 import { AppView, UserProfile } from '../types';

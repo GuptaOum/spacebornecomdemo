@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import React from 'react';
 import { Order } from '../types';
 import { Printer, Download, X, CheckCircle2, ShieldCheck, QrCode } from 'lucide-react';

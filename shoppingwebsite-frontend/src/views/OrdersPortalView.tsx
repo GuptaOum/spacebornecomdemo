@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import React, { useState } from 'react';
 import { Order, AppView } from '../types';
 import { 
@@ -86,7 +86,7 @@ export const OrdersPortalView: React.FC<OrdersPortalViewProps> = ({
         <div className="bg-[#fffbf7] rounded-3xl border border-[#f9bf8f]/60 p-6 sm:p-7 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center space-x-2 text-xs font-bold text-[#0c831f] mb-1">
-              <span>âš¡ Fast 10-15 Min Local Dispatch</span>
+              <span>⚡ Fast 10-15 Min Local Dispatch</span>
             </div>
             <h1 className="text-xl sm:text-2xl font-black text-[#34222e]">
               Orders & Deliveries
@@ -153,7 +153,7 @@ export const OrdersPortalView: React.FC<OrdersPortalViewProps> = ({
                         </span>
                       </div>
                       <p className="text-xs text-[#7a6274] mt-1">
-                        Placed on {displayOrder.date} â€¢ {displayOrder.items.length} items
+                        Placed on {displayOrder.date} • {displayOrder.items.length} items
                       </p>
                     </div>
 
@@ -183,7 +183,7 @@ export const OrdersPortalView: React.FC<OrdersPortalViewProps> = ({
                           </span>
                         </div>
                         <p className="text-[11px] text-[#7a6274] mt-0.5">
-                          {displayOrder.courier.provider} â€¢ Waybill: <strong className="font-mono text-[#34222e]">{displayOrder.courier.awb}</strong>
+                          {displayOrder.courier.provider} • Waybill: <strong className="font-mono text-[#34222e]">{displayOrder.courier.awb}</strong>
                         </p>
                       </div>
                     </div>
@@ -263,7 +263,7 @@ export const OrdersPortalView: React.FC<OrdersPortalViewProps> = ({
                                 {item.name}
                               </h4>
                               <p className="text-[10px] text-[#7a6274] font-mono mt-0.5">
-                                SKU: {item.sku} â€¢ HSN: {item.hsn}
+                                SKU: {item.sku} • HSN: {item.hsn}
                               </p>
                               <span className="inline-block mt-1 text-[10px] font-bold text-[#0c831f] bg-[#f2fcf4] px-2 py-0.5 rounded border border-[#0c831f]/20">
                                 Qty: {item.quantity} pcs
@@ -438,7 +438,7 @@ export const OrdersPortalView: React.FC<OrdersPortalViewProps> = ({
                         </div>
 
                         <p className="text-[11px] text-[#7a6274]">
-                          {order.date} â€¢ {order.items.length} items
+                          {order.date} • {order.items.length} items
                         </p>
 
                         <div className="mt-2.5 pt-2 border-t border-[#f9bf8f]/30 flex items-center justify-between text-xs">

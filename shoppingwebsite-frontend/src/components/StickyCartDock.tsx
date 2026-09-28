@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import React from 'react';
 import { CartItem } from '../types';
 import { ShoppingBag, Zap, ArrowRight } from 'lucide-react';
@@ -21,7 +21,7 @@ export const StickyCartDock: React.FC<StickyCartDockProps> = ({
   const freeDeliveryThreshold = 500;
   const remainingForFree = Math.max(0, freeDeliveryThreshold - subtotal);
 
-  if (totalItems === 0 || currentView === 'cart' || currentView === 'checkout') {
+  if (totalItems === 0 || currentView === 'cart' || currentView === 'checkout' || currentView.startsWith('product')) {
     return null;
   }
 
@@ -43,14 +43,14 @@ export const StickyCartDock: React.FC<StickyCartDockProps> = ({
           <div>
             <div className="flex items-center gap-1.5 text-xs font-black">
               <span>{totalItems} {totalItems === 1 ? 'item' : 'items'}</span>
-              <span>â€¢</span>
+              <span>•</span>
               <span className="text-[#f8cb46] font-mono font-black text-sm">
                 ₹{subtotal.toLocaleString('en-IN')}
               </span>
             </div>
             <p className="text-[10.5px] text-white/90 font-medium flex items-center gap-1">
-              <span>âš¡ 10-15 Min Delivery</span>
-              <span className="text-white/60">â€¢</span>
+              <span>⚡ 10-15 Min Delivery</span>
+              <span className="text-white/60">•</span>
               <span>{remainingForFree === 0 ? 'Free Express Delivery' : `Add ₹${remainingForFree} for Free`}</span>
             </p>
           </div>

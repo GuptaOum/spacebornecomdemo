@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import React, { useState } from 'react';
 import { CartItem, GstDetails } from '../types';
 import { 
@@ -300,7 +300,7 @@ export const CartReviewView: React.FC<CartReviewViewProps> = ({
                   <div className="sm:col-span-2 flex items-center justify-between bg-emerald-50 border border-emerald-200 p-2.5 rounded-lg text-emerald-800 text-[11px]">
                     <span className="flex items-center space-x-1.5 font-medium">
                       <FileCheck className="w-4 h-4 shrink-0" />
-                      <span>State Code: {gstDetails.stateCode || '29'} (Karnataka) â€¢ Compliant with Indian E-Invoicing Portals</span>
+                      <span>State Code: {gstDetails.stateCode || '29'} (Karnataka) • Compliant with Indian E-Invoicing Portals</span>
                     </span>
                     <span className="font-mono font-bold">18% IGST Credit Enabled</span>
                   </div>
@@ -408,7 +408,7 @@ export const CartReviewView: React.FC<CartReviewViewProps> = ({
                     <ShieldCheck className="w-4 h-4 text-emerald-600" />
                     <span>Stripe 256-Bit SSL</span>
                   </span>
-                  <span>â€¢</span>
+                  <span>•</span>
                   <span>PCI-DSS Level 1</span>
                 </div>
                 <p className="text-[10px] text-slate-400">

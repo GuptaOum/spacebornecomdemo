@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import React from 'react';
 import { 
   ShieldCheck, 
@@ -93,7 +93,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onSelectCategory }) 
           <div className="space-y-1.5 text-xs text-[#7a6274] pt-2">
             <p className="flex items-center space-x-2">
               <MapPin className="w-4 h-4 text-[#e2434b] shrink-0" />
-              <span>Kanpur â€¢ Bengaluru â€¢ Noida â€¢ Pune â€¢ Chennai â€¢ Delhi</span>
+              <span>Kanpur • Bengaluru • Noida • Pune • Chennai • Delhi</span>
             </p>
             <p className="flex items-center space-x-2">
               <Mail className="w-4 h-4 text-[#7a6274] shrink-0" />
@@ -210,12 +210,12 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onSelectCategory }) 
       {/* Copyright Sub-bar */}
       <div className="border-t border-[#f9bf8f]/40 bg-[#fee9d7]/50 py-4 px-4 text-center text-[#7a6274] text-xs">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
-          <p>Â© 2026 Spaceborn Technologies. Electronics Quick Commerce.</p>
+          <p>© 2026 Spaceborn Technologies. Electronics Quick Commerce.</p>
           <div className="flex items-center space-x-4">
             <button onClick={() => onNavigate('about')} className="hover:text-[#e2434b] cursor-pointer">About</button>
-            <span>â€¢</span>
+            <span>•</span>
             <button onClick={() => onNavigate('warranty')} className="hover:text-[#e2434b] cursor-pointer">Privacy & Terms</button>
-            <span>â€¢</span>
+            <span>•</span>
             <button onClick={() => onNavigate('contact')} className="hover:text-[#e2434b] cursor-pointer">Help Center</button>
           </div>
         </div>

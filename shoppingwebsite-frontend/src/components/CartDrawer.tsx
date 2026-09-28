@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import React from 'react';
 import { CartItem } from '../types';
 import { X, Trash2, ShoppingBag, ArrowRight, ShieldCheck, Zap, Plus, Minus, Lock } from 'lucide-react';
@@ -73,7 +73,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               <span className="text-[#34222e] flex items-center space-x-1.5">
                 <Zap className="w-4 h-4 text-[#0c831f] fill-[#0c831f]" />
                 {amountNeededForFreeShipping === 0 ? (
-                  <span className="text-[#0c831f] font-bold">ðŸŽ‰ You've unlocked FREE 10-Min Delivery!</span>
+                  <span className="text-[#0c831f] font-bold">🎉 You've unlocked FREE 10-Min Delivery!</span>
                 ) : (
                   <span>Add <strong className="text-[#0c831f] font-bold">₹{amountNeededForFreeShipping.toFixed(0)}</strong> more for FREE Delivery</span>
                 )}
@@ -233,7 +233,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                   <ShieldCheck className="w-3.5 h-3.5 text-[#0c831f]" />
                   <span>256-Bit SSL Encrypted</span>
                 </span>
-                <span>â€¢</span>
+                <span>•</span>
                 <span>GST Compliant Invoicing</span>
               </div>
             </div>

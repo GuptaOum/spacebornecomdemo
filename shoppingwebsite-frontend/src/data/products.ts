@@ -796,16 +796,16 @@ export const INITIAL_PRODUCTS: Product[] = [
     description: 'InvenSense MPU-6050 motion tracking sensor module featuring a 3-axis accelerometer and 3-axis gyroscope with an integrated Digital Motion Processor (DMP) communicating over fast I2C.',
     features: [
       'Digital-output 6-axis MotionFusion data in rotation matrix or quaternions',
-      'Selectable gyro full-scale range: Â±250, Â±500, Â±1000, Â±2000Â°/sec',
-      'Selectable accelerometer range: Â±2g, Â±4g, Â±8g, and Â±16g',
+      'Selectable gyro full-scale range: ±250, ±500, ±1000, ±2000°/sec',
+      'Selectable accelerometer range: ±2g, ±4g, ±8g, and ±16g',
       'Onboard 3.3V low dropout linear voltage regulator'
     ],
     brand: 'InvenSense Compatible',
     voltage: '3.3V - 5V',
     specifications: {
       'Communication': 'I2C Interface (Up to 400kHz)',
-      'Gyro Range': 'Â±250 to Â±2000Â°/s',
-      'Accel Range': 'Â±2g to Â±16g',
+      'Gyro Range': '±250 to ±2000°/s',
+      'Accel Range': '±2g to ±16g',
       'Dimensions': '20 x 15 mm'
     },
     packageIncludes: ['1 x MPU-6050 6-DOF Sensor Module', '1 x Straight 8-Pin Header', '1 x Right-Angle 8-Pin Header']
@@ -824,13 +824,13 @@ export const INITIAL_PRODUCTS: Product[] = [
     rating: 4.8,
     reviewsCount: 82,
     image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuB1ca24-sSVDMcQ0hDEXcMloGCMOyCEK1gXNBNlYOF_JknIwQmJPmdtA62t69lSyZHzbDq-jmA-zhHkBMiZHLFu_Pv5KRx9fOhgccKWnN9l6skbRGdq3CqM-v443F5Sp_AUvRDlFtANm5IxcVk2iW5lOHWx75rO9mLKNNwz8d6HS_4gDN32uxqDJpef4Si1ZSC4V3T3hwzrZnxCPLrZiRnJydn7Dj8jVK4V_w1e0IAGfErx_27fIWx6',
-    description: 'Calibrated digital temperature and relative humidity composite sensor providing high reliability and long-term stability with 0.5Â°C and 2% RH precision.',
+    description: 'Calibrated digital temperature and relative humidity composite sensor providing high reliability and long-term stability with 0.5°C and 2% RH precision.',
     features: ['High accuracy digital single-bus protocol', 'Long distance signal transmission up to 20 meters', 'Includes onboard pull-up resistor and filter capacitor'],
     brand: 'Aosong',
     voltage: '3.3V - 5.5V',
     specifications: {
-      'Temperature Range': '-40Â°C to 80Â°C (Â±0.5Â°C)',
-      'Humidity Range': '0% to 100% RH (Â±2% RH)',
+      'Temperature Range': '-40°C to 80°C (±0.5°C)',
+      'Humidity Range': '0% to 100% RH (±2% RH)',
       'Sampling Interval': '2 seconds'
     },
     packageIncludes: ['1 x DHT22 Sensor Module with PCB & Jumper Wires']
@@ -881,7 +881,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     voltage: '5V Type-C Input',
     specifications: {
       'Input Voltage': '4.5V - 5.5V DC',
-      'Charge Voltage': '4.2V Â±1%',
+      'Charge Voltage': '4.2V ±1%',
       'Charge Current': '1A (Adjustable via Rprog)',
       'Under-Voltage Cutoff': '2.5V'
     },
@@ -908,7 +908,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     specifications: {
       'Holding Torque': '42 N.cm',
       'Rated Current': '1.5 A/phase',
-      'Step Angle': '1.8Â°',
+      'Step Angle': '1.8°',
       'Shaft Diameter': '5.0 mm D-cut',
       'Weight': '280g'
     },
@@ -1006,8 +1006,8 @@ export const INITIAL_PRODUCTS: Product[] = [
     brand: 'ANENG Instruments',
     specifications: {
       'Counts': '6000 Counts True-RMS',
-      'DC Voltage': '6V - 600V (Â±0.5%)',
-      'AC Voltage': '6V - 600V (Â±0.8%)',
+      'DC Voltage': '6V - 600V (±0.5%)',
+      'AC Voltage': '6V - 600V (±0.8%)',
       'Resistance': '600Î© - 60MÎ©'
     },
     packageIncludes: ['1 x 6000-Count True-RMS Multimeter', '1 x Pair of Gold-Plated Test Probes', '1 x User Manual']
@@ -1027,10 +1027,10 @@ export const INITIAL_PRODUCTS: Product[] = [
     reviewsCount: 160,
     image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAWiaqc6bIswO3xQjeteWYd6moSYk0Lvm1GhxDquTmmVgRqoOoJ1GQTeen8wAhu2LbioOk1F_1b7gaS417d0Aexgw5T5Ouu3GALOXd5NNCA57c1TKi3l4fs8hHQNaufUH1Hsp4I1HNkLp3lIjlE21lyV1oH4TqO9TL1ZquPB6Gj8XsVIaqAPwIRDlq7Kzf7pYrW5AVnd1HDS4R9Hy1biXwbx8kAegX4IgXWCfCwlRFl-PVdJNxjJCxk',
     description: 'Comprehensive 600-piece resistor kit covering 30 common resistance values from 10Î© to 1MÎ©. Each value is clearly labeled on individual tape strips for easy workbench identification.',
-    features: ['1/4 Watt rated power with Â±1% high precision tolerance', 'Low noise metal film design with pure copper leads', '30 distinct values: 10Î©, 22Î©, 47Î©, 100Î©, 220Î©, 330Î©, 1kÎ©, 4.7kÎ©, 10kÎ©, 100kÎ©...'],
+    features: ['1/4 Watt rated power with ±1% high precision tolerance', 'Low noise metal film design with pure copper leads', '30 distinct values: 10Î©, 22Î©, 47Î©, 100Î©, 220Î©, 330Î©, 1kÎ©, 4.7kÎ©, 10kÎ©, 100kÎ©...'],
     brand: 'Spaceborn Passives',
     specifications: {
-      'Tolerance': 'Â±1%',
+      'Tolerance': '±1%',
       'Power Rating': '0.25 Watt',
       'Quantity': '600 Pieces (30 values x 20 pcs)'
     },
@@ -1056,7 +1056,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     specifications: {
       'Dimensions': '6 x 6 x 5 mm',
       'Rating': 'DC 12V 50mA',
-      'Operating Force': '180 Â±30 gf'
+      'Operating Force': '180 ±30 gf'
     },
     packageIncludes: ['100 x 6x6x5mm Tactile Push Buttons in Organizer Box']
   },

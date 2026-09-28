@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import React, { useState } from 'react';
 import { Product, AppView, UserProfile } from '../types';
 import { CATEGORIES } from '../data/products';
@@ -39,7 +39,7 @@ const SAMPLE_PRESET_IMAGES = [
   { label: 'Raspberry Pi SBC', url: '/raspberry-pi.jpg' },
   { label: 'HC-SR04 Sonar (Silver)', url: '/hc-sr04.jpg' },
   { label: 'HC-SR04 Sonar (Blue)', url: '/hc-sr04-blue.jpg' },
-  { label: '360Â° LiDAR Sensor', url: '/lidar-sensor.jpg' },
+  { label: '360° LiDAR Sensor', url: '/lidar-sensor.jpg' },
   { label: 'N20 Micro Metal Motor', url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuB0jHiFhzcyrFgJgyr2JGnA-MA0qfoSEqiw2nll3M7zYpo4FfhZMOt0LZqLOiJkRjls09xH8rCqZf29RPN8lTZcnrVuy9e-9pNt_q9vf35L5QPlEZBAK5V6H9wnrMa9HCfeDqh6-x6FsXLtVNLOEmn2IRKFdszN8Movn0r2N87BFmGQzISC2K7uU0qHvqJtFQr54SrVgv2BvpG4HaxLKt-zbiCeoq3tScb1zhEA15I3CSVvtmADPTfd' },
   { label: 'ESP32 Wi-Fi Module', url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBnMVjJT1-pt_AUMIcro80-s0aL2aPVMCoDou9qgbwJANIBVazQ1s39mu2vq1BLesHXaAFSkkpALE_XVjtV3y7azHza4PJbe25tANLFpKG6RPVKvXpoQ_qya7IRJBaN2UcX9MS9fdjvLIdfp1rIlUtIsMMiIjI8RtrobB9REuUC-iURkIpotv160m7Satr4zsxsEt0Inn5LEXj8WMRXDP7zFsw-WcZJ9_KnlsHly_uVy_3HVRHTksl8' },
   { label: 'LiPo Battery Pack', url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBf0XjfJbrhdjhg0VbpvLiPKoO99LBFE6uCTP-_KxA7_79w9ZX4bIG2qSK7tzk__a0aXVJYpAy9tla2Ov7NtXgdJVfDe641HkNv20Vvl5U3VkekKeIXRhJKzeftuu1jHEFuFjSWMxrMEBWzVzGVoCz4wX3uPe1r-dzg6i67KrUgOrEVxwrMvACitKF89MRhhIwBWIJ4E0fbLYP1i6X3_HT1VPgLXDdlyk74i4dPl3qv3QR65L3F_qFq' }
@@ -175,7 +175,7 @@ export const VendorPortalView: React.FC<VendorPortalViewProps> = ({
             onClick={() => onNavigate('catalog')}
             className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white hover:bg-[#fee9d7] border border-[#f9bf8f] text-[#34222e] font-bold text-xs transition cursor-pointer self-start sm:self-auto shadow-xs active:scale-95"
           >
-            <span>ðŸ›’ Switch to Shopper Store</span>
+            <span>🛒 Switch to Shopper Store</span>
             <ArrowRight className="w-3.5 h-3.5 text-[#0c831f]" />
           </button>
         </div>
@@ -451,9 +451,9 @@ export const VendorPortalView: React.FC<VendorPortalViewProps> = ({
                     onChange={(e) => setDeliveryMins(parseInt(e.target.value))}
                     className="w-full px-3 py-2 bg-white border border-[#f9bf8f]/80 rounded-xl text-xs font-bold text-[#0c831f] outline-none focus:border-[#0c831f] cursor-pointer"
                   >
-                    <option value={10}>âš¡ 10 Minutes</option>
-                    <option value={15}>âš¡ 15 Minutes</option>
-                    <option value={20}>âš¡ 20 Minutes</option>
+                    <option value={10}>⚡ 10 Minutes</option>
+                    <option value={15}>⚡ 15 Minutes</option>
+                    <option value={20}>⚡ 20 Minutes</option>
                   </select>
                   <span className="text-[10px] text-[#7a6274]">Dark store radius</span>
                 </div>
@@ -602,9 +602,9 @@ export const VendorPortalView: React.FC<VendorPortalViewProps> = ({
                     <div className="min-w-0">
                       <div className="flex items-center space-x-2 text-[10px] text-[#7a6274]">
                         <span className="font-bold text-[#e2434b] uppercase">{p.brand}</span>
-                        <span>â€¢</span>
+                        <span>•</span>
                         <span className="font-mono">SKU: {p.sku}</span>
-                        <span>â€¢</span>
+                        <span>•</span>
                         <span className="font-semibold text-[#34222e]">{p.category}</span>
                       </div>
                       <h4 className="text-xs sm:text-sm font-bold text-[#34222e] truncate mt-0.5">
@@ -612,7 +612,7 @@ export const VendorPortalView: React.FC<VendorPortalViewProps> = ({
                       </h4>
                       <div className="flex items-center gap-2 mt-1">
                         <span className="text-[10px] font-bold text-[#0c831f] bg-[#f2fcf4] px-2 py-0.5 rounded border border-[#0c831f]/20">
-                          âš¡ {p.deliveryMins || 10} MINS ETA
+                          ⚡ {p.deliveryMins || 10} MINS ETA
                         </span>
                         <span className="text-[10px] text-[#7a6274]">
                           HSN: {p.hsn}

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import React, { useState, useEffect } from 'react';
 import { Product } from '../types';
 import { Eye, Zap, Plus, Minus, Star } from 'lucide-react';
@@ -69,12 +69,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
     : null;
 
-  // Short spec string for quick commerce scanning (e.g. "12V â€¢ 300 RPM â€¢ Hall Enc.")
+  // Short spec string for quick commerce scanning (e.g. "12V • 300 RPM • Hall Enc.")
   const specSummary = product.rpm 
-    ? `${product.voltage || '12V'} â€¢ ${product.rpm} RPM`
+    ? `${product.voltage || '12V'} • ${product.rpm} RPM`
     : product.shaftType
-    ? `${product.shaftType} â€¢ 1 Unit`
-    : product.packSize || '1 Unit â€¢ Standard Pack';
+    ? `${product.shaftType} • 1 Unit`
+    : product.packSize || '1 Unit • Standard Pack';
 
   return (
     <article 
