@@ -37,6 +37,31 @@ export interface Product {
   datasheetUrl?: string;
   cadModelUrl?: string;
   badge?: string;
+  deliveryMins?: number; // e.g. 10 or 15 mins
+  packSize?: string; // e.g. '1 Unit', 'Pack of 2', '100g'
+  flashDeal?: boolean;
+  claimedPercent?: number; // e.g. 78% claimed
+  videoUrl?: string; // product demo video
+}
+
+export interface ProductVideoReel {
+  id: string;
+  title: string;
+  videoUrl: string;
+  thumbnailUrl: string;
+  creatorName: string;
+  creatorAvatar: string;
+  creatorTag: string; // e.g., 'Spaceborn Robotics Lab' or 'Community Verified'
+  likes: number;
+  views: string;
+  productId: string;
+  productName: string;
+  productPrice: number;
+  productOriginalPrice?: number;
+  productImage: string;
+  discountPercent?: number;
+  deliveryMinutes: number;
+  highlights: string[];
 }
 
 export interface CartItem {
@@ -168,6 +193,7 @@ export type AppView =
   | 'about'
   | 'contact'
   | 'b2b'
+  | 'vendor'
   | 'fabrication'
   | 'datasheets'
   | 'warranty'

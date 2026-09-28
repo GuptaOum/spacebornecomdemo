@@ -35,7 +35,7 @@ export const WarrantyPolicyView: React.FC<WarrantyPolicyViewProps> = ({ onNaviga
       <div className="max-w-7xl mx-auto space-y-10">
         
         {/* Header */}
-        <div className="bg-[#192737] rounded-2xl p-8 md:p-10 text-white border border-slate-800 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="bg-white rounded-2xl p-8 md:p-10 text-white border border-slate-800 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="max-w-2xl space-y-3">
             <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold uppercase">
               <ShieldCheck className="w-3.5 h-3.5" />
@@ -60,7 +60,7 @@ export const WarrantyPolicyView: React.FC<WarrantyPolicyViewProps> = ({ onNaviga
         {/* 3 Pillars Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-xs space-y-3">
-            <div className="w-10 h-10 rounded-lg bg-orange-50 text-[#EF4F12] flex items-center justify-center font-bold">
+            <div className="w-10 h-10 rounded-lg bg-orange-50 text-[#6366f1] flex items-center justify-center font-bold">
               1
             </div>
             <h3 className="font-bold text-slate-900 text-base">ESD Moisture Barrier Packaging</h3>
@@ -123,7 +123,7 @@ export const WarrantyPolicyView: React.FC<WarrantyPolicyViewProps> = ({ onNaviga
                   setSku('');
                   setNotes('');
                 }}
-                className="bg-[#EF4F12] hover:bg-[#d44000] text-white px-5 py-2 rounded-lg text-xs font-bold transition cursor-pointer"
+                className="bg-[#6366f1] hover:bg-[#d44000] text-white px-5 py-2 rounded-lg text-xs font-bold transition cursor-pointer"
               >
                 Create Another Request
               </button>
@@ -139,7 +139,7 @@ export const WarrantyPolicyView: React.FC<WarrantyPolicyViewProps> = ({ onNaviga
                     value={orderId}
                     onChange={e => setOrderId(e.target.value)}
                     placeholder="e.g. SPBN-892411"
-                    className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 outline-none focus:border-[#EF4F12] font-mono"
+                    className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 outline-none focus:border-[#6366f1] font-mono"
                   />
                 </div>
 
@@ -151,7 +151,7 @@ export const WarrantyPolicyView: React.FC<WarrantyPolicyViewProps> = ({ onNaviga
                     value={sku}
                     onChange={e => setSku(e.target.value)}
                     placeholder="e.g. MOT-N20-12V-300E"
-                    className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 outline-none focus:border-[#EF4F12] font-mono"
+                    className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 outline-none focus:border-[#6366f1] font-mono"
                   />
                 </div>
 
@@ -160,7 +160,7 @@ export const WarrantyPolicyView: React.FC<WarrantyPolicyViewProps> = ({ onNaviga
                   <select 
                     value={reason}
                     onChange={e => setReason(e.target.value)}
-                    className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 bg-white outline-none focus:border-[#EF4F12] cursor-pointer"
+                    className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 bg-white outline-none focus:border-[#6366f1] cursor-pointer"
                   >
                     <option value="bench_voltage_issue">Bench Voltage / Motor No-Rotate</option>
                     <option value="encoder_waveform">Encoder Waveform Missing / Distorted</option>
@@ -177,13 +177,13 @@ export const WarrantyPolicyView: React.FC<WarrantyPolicyViewProps> = ({ onNaviga
                   value={notes}
                   onChange={e => setNotes(e.target.value)}
                   placeholder="e.g. Tested at 12V DC bench supply; current draw was 0mA, no response on quadrature channels."
-                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 outline-none focus:border-[#EF4F12]"
+                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 outline-none focus:border-[#6366f1]"
                 />
               </div>
 
               <button 
                 type="submit"
-                className="bg-[#EF4F12] hover:bg-[#d44000] text-white px-6 py-2.5 rounded-lg text-xs font-bold transition flex items-center space-x-2 shadow-sm cursor-pointer"
+                className="bg-[#6366f1] hover:bg-[#d44000] text-white px-6 py-2.5 rounded-lg text-xs font-bold transition flex items-center space-x-2 shadow-sm cursor-pointer"
               >
                 <RotateCcw className="w-4 h-4" />
                 <span>Submit & Generate Prepaid BlueDart RMA</span>

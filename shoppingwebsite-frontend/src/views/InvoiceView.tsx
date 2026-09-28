@@ -18,24 +18,24 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({ order, onClose }) => {
       <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full overflow-hidden flex flex-col my-8">
         
         {/* Action Bar */}
-        <div className="px-6 py-4 bg-[#192737] text-white flex items-center justify-between print:hidden">
+        <div className="px-6 py-4 bg-[#34222e] text-white flex items-center justify-between print:hidden">
           <div className="flex items-center space-x-2">
             <span className="font-bold text-sm">Official GST Tax E-Invoice #{order.orderNumber}</span>
-            <span className="text-[10px] bg-emerald-500 text-white font-bold px-2 py-0.5 rounded">
+            <span className="text-[10px] bg-[#0c831f] text-white font-bold px-2 py-0.5 rounded">
               Paid via Stripe
             </span>
           </div>
           <div className="flex items-center space-x-3">
             <button
               onClick={() => window.print()}
-              className="bg-[#EF4F12] hover:bg-[#d44000] text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center space-x-1.5 transition cursor-pointer"
+              className="bg-[#0c831f] hover:bg-[#0a6e1a] text-white px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition cursor-pointer shadow-xs"
             >
               <Printer className="w-3.5 h-3.5" />
               <span>Print / PDF</span>
             </button>
             <button
               onClick={onClose}
-              className="text-slate-400 hover:text-white p-1 transition cursor-pointer"
+              className="text-white/70 hover:text-white p-1 rounded-lg hover:bg-white/10 transition cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>

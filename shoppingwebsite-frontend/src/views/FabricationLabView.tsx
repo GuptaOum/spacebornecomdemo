@@ -90,7 +90,7 @@ export const FabricationLabView: React.FC<FabricationLabViewProps> = ({ onNaviga
                     onClick={() => setLayers(l)}
                     className={`py-3 px-4 rounded-xl text-xs font-bold border transition cursor-pointer text-center ${
                       layers === l 
-                        ? 'border-[#EF4F12] bg-orange-50 text-[#EF4F12]' 
+                        ? 'border-[#6366f1] bg-orange-50 text-[#6366f1]' 
                         : 'border-slate-200 hover:border-slate-300 text-slate-700'
                     }`}
                   >
@@ -111,7 +111,7 @@ export const FabricationLabView: React.FC<FabricationLabViewProps> = ({ onNaviga
                     onClick={() => setQuantity(q)}
                     className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition cursor-pointer text-center ${
                       quantity === q 
-                        ? 'border-[#EF4F12] bg-orange-50 text-[#EF4F12]' 
+                        ? 'border-[#6366f1] bg-orange-50 text-[#6366f1]' 
                         : 'border-slate-200 hover:border-slate-300 text-slate-700'
                     }`}
                   >
@@ -126,11 +126,11 @@ export const FabricationLabView: React.FC<FabricationLabViewProps> = ({ onNaviga
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-2">Surface Metallurgy</label>
                 <div className="space-y-2">
-                  <label className={`flex items-center justify-between p-3 rounded-xl border text-xs cursor-pointer transition ${surfaceFinish === 'enig' ? 'border-[#EF4F12] bg-orange-50/50' : 'border-slate-200'}`}>
+                  <label className={`flex items-center justify-between p-3 rounded-xl border text-xs cursor-pointer transition ${surfaceFinish === 'enig' ? 'border-[#6366f1] bg-orange-50/50' : 'border-slate-200'}`}>
                     <span className="font-semibold text-slate-900">ENIG (Electroless Nickel Immersion Gold)</span>
                     <input type="radio" name="finish" checked={surfaceFinish === 'enig'} onChange={() => setSurfaceFinish('enig')} />
                   </label>
-                  <label className={`flex items-center justify-between p-3 rounded-xl border text-xs cursor-pointer transition ${surfaceFinish === 'hasl' ? 'border-[#EF4F12] bg-orange-50/50' : 'border-slate-200'}`}>
+                  <label className={`flex items-center justify-between p-3 rounded-xl border text-xs cursor-pointer transition ${surfaceFinish === 'hasl' ? 'border-[#6366f1] bg-orange-50/50' : 'border-slate-200'}`}>
                     <span className="font-semibold text-slate-900">Lead-Free HASL (Hot Air Solder Level)</span>
                     <input type="radio" name="finish" checked={surfaceFinish === 'hasl'} onChange={() => setSurfaceFinish('hasl')} />
                   </label>
@@ -142,7 +142,7 @@ export const FabricationLabView: React.FC<FabricationLabViewProps> = ({ onNaviga
                 <select 
                   value={soldermask} 
                   onChange={e => setSoldermask(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-slate-200 text-xs bg-white outline-none focus:border-[#EF4F12] cursor-pointer"
+                  className="w-full p-2.5 rounded-xl border border-slate-200 text-xs bg-white outline-none focus:border-[#6366f1] cursor-pointer"
                 >
                   <option value="Space Matte Black">Space Matte Black (Aerospace Stealth)</option>
                   <option value="Classic Industrial Green">Classic Industrial Green</option>
@@ -156,7 +156,7 @@ export const FabricationLabView: React.FC<FabricationLabViewProps> = ({ onNaviga
                       type="checkbox" 
                       checked={needSmt} 
                       onChange={e => setNeedSmt(e.target.checked)}
-                      className="rounded text-[#EF4F12] focus:ring-[#EF4F12]"
+                      className="rounded text-[#6366f1] focus:ring-[#6366f1]"
                     />
                     <span>Include SMT Pick-and-Place Component Stencil & Assembly</span>
                   </label>
@@ -165,7 +165,7 @@ export const FabricationLabView: React.FC<FabricationLabViewProps> = ({ onNaviga
             </div>
 
             {/* Gerber Dropzone */}
-            <div className="border-2 border-dashed border-slate-300 rounded-xl p-6 text-center hover:border-[#EF4F12] transition bg-slate-50/50">
+            <div className="border-2 border-dashed border-slate-300 rounded-xl p-6 text-center hover:border-[#6366f1] transition bg-slate-50/50">
               <UploadCloud className="w-8 h-8 text-slate-400 mx-auto mb-2" />
               <div className="text-xs font-bold text-slate-800">
                 {uploadedFileName ? (
@@ -248,7 +248,7 @@ export const FabricationLabView: React.FC<FabricationLabViewProps> = ({ onNaviga
               ) : (
                 <button
                   onClick={() => setSubmitted(true)}
-                  className="w-full bg-[#EF4F12] hover:bg-[#d44000] text-white py-3 rounded-xl text-xs font-bold transition shadow-md shadow-orange-500/20 flex items-center justify-center space-x-2 cursor-pointer"
+                  className="w-full bg-[#6366f1] hover:bg-[#d44000] text-white py-3 rounded-xl text-xs font-bold transition shadow-md shadow-orange-500/20 flex items-center justify-center space-x-2 cursor-pointer"
                 >
                   <FileCode2 className="w-4 h-4" />
                   <span>Submit Gerber for Automated DRC & Quote</span>
@@ -257,7 +257,7 @@ export const FabricationLabView: React.FC<FabricationLabViewProps> = ({ onNaviga
             </div>
 
             {/* Quality Certifications */}
-            <div className="bg-[#192737] rounded-2xl p-5 text-white text-xs space-y-3">
+            <div className="bg-white rounded-2xl p-5 text-white text-xs space-y-3">
               <div className="flex items-center space-x-2 text-orange-400 font-bold">
                 <ShieldCheck className="w-4 h-4" />
                 <span>Spaceborn Lab IPC Class 3 Standards</span>

@@ -35,7 +35,7 @@ export const AboutView: React.FC<AboutViewProps> = ({ onNavigate }) => {
           </div>
 
           <div className="relative z-10 max-w-3xl space-y-5">
-            <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-[#EF4F12] text-xs font-bold tracking-wide uppercase">
+            <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-[#6366f1] text-xs font-bold tracking-wide uppercase">
               <Rocket className="w-3.5 h-3.5" />
               <span>Next-Gen Hardware Infrastructure</span>
             </div>
@@ -51,7 +51,7 @@ export const AboutView: React.FC<AboutViewProps> = ({ onNavigate }) => {
             <div className="pt-2 flex flex-wrap items-center gap-4">
               <button 
                 onClick={() => onNavigate('catalog')}
-                className="bg-[#EF4F12] hover:bg-[#d44000] text-white px-6 py-3 rounded-lg text-sm font-bold flex items-center space-x-2 transition shadow-lg shadow-orange-500/25 cursor-pointer"
+                className="bg-[#6366f1] hover:bg-[#d44000] text-white px-6 py-3 rounded-lg text-sm font-bold flex items-center space-x-2 transition shadow-lg shadow-orange-500/25 cursor-pointer"
               >
                 <span>Explore 15,000+ SKUs</span>
                 <ArrowRight className="w-4 h-4" />
@@ -69,7 +69,7 @@ export const AboutView: React.FC<AboutViewProps> = ({ onNavigate }) => {
         {/* Pillars of Engineering Quality */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-xs space-y-3">
-            <div className="w-12 h-12 rounded-lg bg-orange-50 text-[#EF4F12] flex items-center justify-center">
+            <div className="w-12 h-12 rounded-lg bg-orange-50 text-[#6366f1] flex items-center justify-center">
               <Microscope className="w-6 h-6" />
             </div>
             <h3 className="font-bold text-slate-900 text-lg">Cleanroom Bench QC Validation</h3>
@@ -138,10 +138,10 @@ export const AboutView: React.FC<AboutViewProps> = ({ onNavigate }) => {
         </div>
 
         {/* Impact Numbers */}
-        <div className="bg-[#192737] rounded-2xl p-8 md:p-10 text-white">
+        <div className="bg-white rounded-2xl p-8 md:p-10 text-white">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center divide-y md:divide-y-0 md:divide-x divide-slate-800">
             <div className="pt-4 md:pt-0">
-              <div className="text-3xl sm:text-4xl font-black text-[#EF4F12]">15,000+</div>
+              <div className="text-3xl sm:text-4xl font-black text-[#6366f1]">15,000+</div>
               <p className="text-xs font-medium text-slate-400 mt-1 uppercase tracking-wider">Catalog SKUs</p>
             </div>
             <div className="pt-4 md:pt-0">

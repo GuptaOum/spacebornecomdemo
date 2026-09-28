@@ -50,7 +50,7 @@ export const ContactView: React.FC<ContactViewProps> = ({ onNavigate }) => {
         {/* Title Header */}
         <div className="bg-white rounded-2xl p-8 border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
-            <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-orange-50 border border-orange-200 text-[#EF4F12] text-xs font-bold mb-3">
+            <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-orange-50 border border-orange-200 text-[#6366f1] text-xs font-bold mb-3">
               <PhoneCall className="w-3.5 h-3.5" />
               <span>Spaceborn Technical Support & Engineering Desk</span>
             </div>
@@ -98,7 +98,7 @@ export const ContactView: React.FC<ContactViewProps> = ({ onNavigate }) => {
                         message: ''
                       });
                     }}
-                    className="bg-[#EF4F12] hover:bg-[#d44000] text-white px-6 py-2.5 rounded-lg text-sm font-bold transition cursor-pointer"
+                    className="bg-[#6366f1] hover:bg-[#d44000] text-white px-6 py-2.5 rounded-lg text-sm font-bold transition cursor-pointer"
                   >
                     Submit Another Inquiry
                   </button>
@@ -120,7 +120,7 @@ export const ContactView: React.FC<ContactViewProps> = ({ onNavigate }) => {
                       value={formData.name}
                       onChange={e => setFormData({ ...formData, name: e.target.value })}
                       placeholder="e.g. Vikram Joshi"
-                      className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-slate-200 outline-none focus:border-[#EF4F12] transition"
+                      className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-slate-200 outline-none focus:border-[#6366f1] transition"
                     />
                   </div>
 
@@ -132,7 +132,7 @@ export const ContactView: React.FC<ContactViewProps> = ({ onNavigate }) => {
                       value={formData.email}
                       onChange={e => setFormData({ ...formData, email: e.target.value })}
                       placeholder="engineer@company.com"
-                      className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-slate-200 outline-none focus:border-[#EF4F12] transition"
+                      className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-slate-200 outline-none focus:border-[#6366f1] transition"
                     />
                   </div>
 
@@ -143,7 +143,7 @@ export const ContactView: React.FC<ContactViewProps> = ({ onNavigate }) => {
                       value={formData.phone}
                       onChange={e => setFormData({ ...formData, phone: e.target.value })}
                       placeholder="+91 98000 00000"
-                      className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-slate-200 outline-none focus:border-[#EF4F12] transition"
+                      className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-slate-200 outline-none focus:border-[#6366f1] transition"
                     />
                   </div>
 
@@ -154,7 +154,7 @@ export const ContactView: React.FC<ContactViewProps> = ({ onNavigate }) => {
                       value={formData.company}
                       onChange={e => setFormData({ ...formData, company: e.target.value })}
                       placeholder="e.g. Apex Robotics / IIT Labs"
-                      className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-slate-200 outline-none focus:border-[#EF4F12] transition"
+                      className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-slate-200 outline-none focus:border-[#6366f1] transition"
                     />
                   </div>
                 </div>
@@ -165,7 +165,7 @@ export const ContactView: React.FC<ContactViewProps> = ({ onNavigate }) => {
                     <select 
                       value={formData.inquiryType}
                       onChange={e => setFormData({ ...formData, inquiryType: e.target.value })}
-                      className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-slate-200 outline-none focus:border-[#EF4F12] bg-white transition cursor-pointer"
+                      className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-slate-200 outline-none focus:border-[#6366f1] bg-white transition cursor-pointer"
                     >
                       <option value="technical_spec">Datasheet, Pinouts & Firmware Help</option>
                       <option value="b2b_quote">Institutional Bulk Quote / Purchase Order</option>
@@ -182,7 +182,7 @@ export const ContactView: React.FC<ContactViewProps> = ({ onNavigate }) => {
                       value={formData.orderNumber}
                       onChange={e => setFormData({ ...formData, orderNumber: e.target.value })}
                       placeholder="e.g. SPBN-892411 or MOT-N20"
-                      className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-slate-200 outline-none focus:border-[#EF4F12] transition font-mono"
+                      className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-slate-200 outline-none focus:border-[#6366f1] transition font-mono"
                     />
                   </div>
                 </div>
@@ -195,13 +195,13 @@ export const ContactView: React.FC<ContactViewProps> = ({ onNavigate }) => {
                     value={formData.message}
                     onChange={e => setFormData({ ...formData, message: e.target.value })}
                     placeholder="Describe your technical requirements, voltage ratings, quantity requirements, or issues..."
-                    className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-slate-200 outline-none focus:border-[#EF4F12] transition"
+                    className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-slate-200 outline-none focus:border-[#6366f1] transition"
                   />
                 </div>
 
                 <button 
                   type="submit"
-                  className="bg-[#EF4F12] hover:bg-[#d44000] text-white px-7 py-3 rounded-lg text-sm font-bold flex items-center space-x-2 transition shadow-md shadow-orange-500/20 cursor-pointer"
+                  className="bg-[#6366f1] hover:bg-[#d44000] text-white px-7 py-3 rounded-lg text-sm font-bold flex items-center space-x-2 transition shadow-md shadow-orange-500/20 cursor-pointer"
                 >
                   <Send className="w-4 h-4" />
                   <span>Send Ticket to Engineering Desk</span>
@@ -214,7 +214,7 @@ export const ContactView: React.FC<ContactViewProps> = ({ onNavigate }) => {
           <div className="space-y-6">
             
             {/* Quick 10-Min Callback Card */}
-            <div className="bg-[#192737] rounded-2xl p-6 text-white border border-slate-800 space-y-4">
+            <div className="bg-white rounded-2xl p-6 text-white border border-slate-800 space-y-4">
               <div className="flex items-center space-x-2 text-xs font-bold text-orange-400 uppercase tracking-wider">
                 <Clock className="w-4 h-4" />
                 <span>Instant 15-Min Engineer Callback</span>
@@ -242,7 +242,7 @@ export const ContactView: React.FC<ContactViewProps> = ({ onNavigate }) => {
                     />
                     <button 
                       type="submit"
-                      className="bg-[#EF4F12] hover:bg-[#d44000] text-white px-4 text-xs font-bold transition shrink-0 cursor-pointer"
+                      className="bg-[#6366f1] hover:bg-[#d44000] text-white px-4 text-xs font-bold transition shrink-0 cursor-pointer"
                     >
                       Call Me
                     </button>
@@ -257,7 +257,7 @@ export const ContactView: React.FC<ContactViewProps> = ({ onNavigate }) => {
               <h4 className="font-bold text-slate-900 text-sm uppercase tracking-wider">Lab & Hub Locations</h4>
 
               <div className="space-y-4 text-xs">
-                <div className="border-l-2 border-[#EF4F12] pl-3 space-y-1">
+                <div className="border-l-2 border-[#6366f1] pl-3 space-y-1">
                   <div className="font-bold text-slate-900">Spaceborn Aerospace & Hardware R&D Hub</div>
                   <p className="text-slate-600">Plot 18, Phase 2, Electronic City, Bengaluru 560100</p>
                   <p className="text-slate-500">Email: blr.lab@spaceborn.in</p>

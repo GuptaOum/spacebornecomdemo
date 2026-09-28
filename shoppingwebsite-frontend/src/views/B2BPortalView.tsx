@@ -130,7 +130,7 @@ SEN-TF-LUNA-LIDAR, 5`
       <div className="max-w-7xl mx-auto space-y-10">
         
         {/* Header */}
-        <div className="bg-[#192737] rounded-2xl p-8 md:p-10 text-white border border-slate-800 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="bg-white rounded-2xl p-8 md:p-10 text-white border border-slate-800 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="max-w-2xl space-y-3">
             <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/30 text-orange-400 text-xs font-bold uppercase">
               <Building2 className="w-3.5 h-3.5" />
@@ -165,7 +165,7 @@ SEN-TF-LUNA-LIDAR, 5`
           <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center space-x-2">
-                <FileSpreadsheet className="w-5 h-5 text-[#EF4F12]" />
+                <FileSpreadsheet className="w-5 h-5 text-[#6366f1]" />
                 <h3 className="font-bold text-slate-900 text-sm">Paste BOM (MPN, Qty)</h3>
               </div>
               <span className="text-[11px] text-slate-400 font-mono">Format: SKU, Qty</span>
@@ -176,14 +176,14 @@ SEN-TF-LUNA-LIDAR, 5`
               value={bomInputText}
               onChange={e => setBomInputText(e.target.value)}
               placeholder="MOT-N20-12V-300E, 20&#10;DRV-TB6600-4A, 10"
-              className="w-full p-3 font-mono text-xs rounded-xl border border-slate-200 outline-none focus:border-[#EF4F12] transition bg-slate-50/50"
+              className="w-full p-3 font-mono text-xs rounded-xl border border-slate-200 outline-none focus:border-[#6366f1] transition bg-slate-50/50"
             />
 
             <div className="space-y-3">
               <button 
                 onClick={handleAnalyzeBom}
                 disabled={isProcessing}
-                className="w-full bg-[#EF4F12] hover:bg-[#d44000] text-white py-2.5 rounded-lg text-xs font-bold transition flex items-center justify-center space-x-2 shadow-sm cursor-pointer"
+                className="w-full bg-[#6366f1] hover:bg-[#d44000] text-white py-2.5 rounded-lg text-xs font-bold transition flex items-center justify-center space-x-2 shadow-sm cursor-pointer"
               >
                 <Calculator className="w-4 h-4" />
                 <span>{isProcessing ? 'Matching Catalog...' : 'Analyze & Match Spaceborn Catalog'}</span>
@@ -196,7 +196,7 @@ SEN-TF-LUNA-LIDAR, 5`
                   value={appliedGstin}
                   onChange={e => setAppliedGstin(e.target.value)}
                   placeholder="29AABCS9482Q1Z7"
-                  className="w-full px-3 py-2 text-xs font-mono rounded-lg border border-slate-200 outline-none focus:border-[#EF4F12]"
+                  className="w-full px-3 py-2 text-xs font-mono rounded-lg border border-slate-200 outline-none focus:border-[#6366f1]"
                 />
               </div>
             </div>
@@ -221,7 +221,7 @@ SEN-TF-LUNA-LIDAR, 5`
 
                 <button 
                   onClick={handleAddAllToCart}
-                  className="px-4 py-2 text-xs font-bold text-white bg-[#EF4F12] hover:bg-[#d44000] rounded-lg transition flex items-center space-x-1.5 shadow-sm shadow-orange-500/20 cursor-pointer"
+                  className="px-4 py-2 text-xs font-bold text-white bg-[#6366f1] hover:bg-[#d44000] rounded-lg transition flex items-center space-x-1.5 shadow-sm shadow-orange-500/20 cursor-pointer"
                 >
                   <ShoppingCart className="w-3.5 h-3.5" />
                   <span>Add All to Cart</span>
@@ -323,7 +323,7 @@ SEN-TF-LUNA-LIDAR, 5`
                     alert('Proforma Quotation PDF downloaded to your device.');
                     setShowRfqModal(false);
                   }}
-                  className="flex-1 bg-[#EF4F12] hover:bg-[#d44000] text-white py-2.5 rounded-lg text-xs font-bold flex items-center justify-center space-x-2 transition cursor-pointer"
+                  className="flex-1 bg-[#6366f1] hover:bg-[#d44000] text-white py-2.5 rounded-lg text-xs font-bold flex items-center justify-center space-x-2 transition cursor-pointer"
                 >
                   <Download className="w-4 h-4" />
                   <span>Download Proforma Quotation PDF</span>

@@ -142,7 +142,7 @@ export function AccountProfileView({
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs">
             <div className="flex items-start justify-between">
               <div className="flex items-center space-x-3.5">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#EF4F12] to-[#ff7a45] text-white flex items-center justify-center font-black text-xl shadow-md shadow-orange-500/20">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#6366f1] to-[#ff7a45] text-white flex items-center justify-center font-black text-xl shadow-md shadow-orange-500/20">
                   {user.fullName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                 </div>
                 <div>
@@ -192,7 +192,7 @@ export function AccountProfileView({
               <button
                 type="button"
                 onClick={() => onNavigate('orders')}
-                className="w-full text-left p-2.5 rounded-lg hover:bg-slate-50 flex items-center justify-between text-slate-700 hover:text-[#EF4F12] transition cursor-pointer"
+                className="w-full text-left p-2.5 rounded-lg hover:bg-slate-50 flex items-center justify-between text-slate-700 hover:text-[#6366f1] transition cursor-pointer"
               >
                 <span className="flex items-center space-x-2">
                   <Package className="w-4 h-4 text-slate-400" />
@@ -206,7 +206,7 @@ export function AccountProfileView({
                 onClick={() => {
                   onNavigate('orders');
                 }}
-                className="w-full text-left p-2.5 rounded-lg hover:bg-slate-50 flex items-center justify-between text-slate-700 hover:text-[#EF4F12] transition cursor-pointer"
+                className="w-full text-left p-2.5 rounded-lg hover:bg-slate-50 flex items-center justify-between text-slate-700 hover:text-[#6366f1] transition cursor-pointer"
               >
                 <span className="flex items-center space-x-2">
                   <FileCheck2 className="w-4 h-4 text-slate-400" />
@@ -240,7 +240,7 @@ export function AccountProfileView({
               Qualify for additional 5% bulk rebate coupons and prioritized component bench QC testing.
             </p>
             <div className="w-full bg-slate-700 h-1.5 rounded-full overflow-hidden mb-2">
-              <div className="bg-[#EF4F12] h-full w-3/4 rounded-full" />
+              <div className="bg-[#6366f1] h-full w-3/4 rounded-full" />
             </div>
             <div className="flex justify-between text-[10px] text-slate-400">
               <span>Next Milestone: Enterprise VIP</span>
@@ -260,7 +260,7 @@ export function AccountProfileView({
               onClick={() => setActiveTab('profile')}
               className={`pb-3 border-b-2 transition cursor-pointer ${
                 activeTab === 'profile'
-                  ? 'border-[#EF4F12] text-[#EF4F12]'
+                  ? 'border-[#6366f1] text-[#6366f1]'
                   : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
@@ -272,7 +272,7 @@ export function AccountProfileView({
               onClick={() => setActiveTab('addresses')}
               className={`pb-3 border-b-2 transition cursor-pointer ${
                 activeTab === 'addresses'
-                  ? 'border-[#EF4F12] text-[#EF4F12]'
+                  ? 'border-[#6366f1] text-[#6366f1]'
                   : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
@@ -284,7 +284,7 @@ export function AccountProfileView({
               onClick={() => setActiveTab('gst')}
               className={`pb-3 border-b-2 transition cursor-pointer flex items-center space-x-1.5 ${
                 activeTab === 'gst'
-                  ? 'border-[#EF4F12] text-[#EF4F12]'
+                  ? 'border-[#6366f1] text-[#6366f1]'
                   : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
@@ -365,7 +365,7 @@ export function AccountProfileView({
                           type="text"
                           value={fullName}
                           onChange={(e) => setFullName(e.target.value)}
-                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500/20 focus:border-[#EF4F12] outline-none"
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500/20 focus:border-[#6366f1] outline-none"
                           required
                         />
                       </div>
@@ -376,7 +376,7 @@ export function AccountProfileView({
                           type="text"
                           value={phone}
                           onChange={(e) => setPhone(e.target.value)}
-                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500/20 focus:border-[#EF4F12] outline-none font-mono"
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500/20 focus:border-[#6366f1] outline-none font-mono"
                           required
                         />
                       </div>
@@ -387,7 +387,7 @@ export function AccountProfileView({
                           type="text"
                           value={companyName}
                           onChange={(e) => setCompanyName(e.target.value)}
-                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500/20 focus:border-[#EF4F12] outline-none"
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500/20 focus:border-[#6366f1] outline-none"
                         />
                       </div>
 
@@ -397,7 +397,7 @@ export function AccountProfileView({
                           type="text"
                           value={designation}
                           onChange={(e) => setDesignation(e.target.value)}
-                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500/20 focus:border-[#EF4F12] outline-none"
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500/20 focus:border-[#6366f1] outline-none"
                         />
                       </div>
                     </div>
@@ -412,7 +412,7 @@ export function AccountProfileView({
                       </button>
                       <button
                         type="submit"
-                        className="px-4 py-2 bg-[#EF4F12] text-white rounded-lg font-bold hover:bg-[#d4430e] shadow-xs cursor-pointer"
+                        className="px-4 py-2 bg-[#6366f1] text-white rounded-lg font-bold hover:bg-[#d4430e] shadow-xs cursor-pointer"
                       >
                         Save Profile Changes
                       </button>
@@ -507,7 +507,7 @@ export function AccountProfileView({
                       </button>
                       <button
                         type="submit"
-                        className="px-3.5 py-1.5 bg-[#EF4F12] text-white rounded-lg font-bold hover:bg-[#d4430e]"
+                        className="px-3.5 py-1.5 bg-[#6366f1] text-white rounded-lg font-bold hover:bg-[#d4430e]"
                       >
                         Save Address
                       </button>
@@ -522,7 +522,7 @@ export function AccountProfileView({
                       key={addr.id}
                       className={`p-4 rounded-xl border transition relative ${
                         addr.isDefault
-                          ? 'border-[#EF4F12] bg-orange-50/20 shadow-xs ring-1 ring-orange-500/20'
+                          ? 'border-[#6366f1] bg-orange-50/20 shadow-xs ring-1 ring-orange-500/20'
                           : 'border-slate-200 bg-white hover:border-slate-300'
                       }`}
                     >
@@ -540,7 +540,7 @@ export function AccountProfileView({
                           )}
                         </div>
                         {addr.isDefault && (
-                          <span className="text-[10px] font-bold text-[#EF4F12] bg-orange-100 px-2 py-0.5 rounded-full">
+                          <span className="text-[10px] font-bold text-[#6366f1] bg-orange-100 px-2 py-0.5 rounded-full">
                             Default
                           </span>
                         )}
@@ -660,7 +660,7 @@ export function AccountProfileView({
                         });
                         setSavedSuccess(true);
                       }}
-                      className="px-4 py-2 bg-[#EF4F12] text-white rounded-lg text-xs font-bold hover:bg-[#d4430e] cursor-pointer"
+                      className="px-4 py-2 bg-[#6366f1] text-white rounded-lg text-xs font-bold hover:bg-[#d4430e] cursor-pointer"
                     >
                       Attach Verified Sample GSTIN (29AABCA9482Q1Z7)
                     </button>

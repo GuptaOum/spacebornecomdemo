@@ -1,27 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Product, CartItem, UserProfile, AppView } from '../types';
-import { CATEGORIES } from '../data/products';
 import { SpacebornLogo } from './SpacebornLogo';
 import { 
   Search, 
   ShoppingCart, 
   Heart, 
-  RefreshCw, 
   User, 
-  Truck, 
-  FileCheck, 
-  HelpCircle, 
-  PhoneCall, 
-  Cpu, 
   ChevronDown,
   X,
   LogOut,
-  Building2,
-  Sparkles,
-  UserCheck,
   Settings,
-  Layers,
-  FileText,
+  MapPin,
+  Receipt,
+  Store,
   ShieldCheck
 } from 'lucide-react';
 
@@ -43,10 +35,19 @@ interface HeaderProps {
   onSelectProduct: (p: Product) => void;
 }
 
+const WAREHOUSE_HUBS = [
+  { city: 'Kanpur', area: 'Kanpur Center, Mall Road', pincode: '208001', eta: '10 MINS', active: true },
+  { city: 'Bengaluru', area: 'Koramangala 4th Block', pincode: '560034', eta: '12 MINS', active: false },
+  { city: 'Delhi', area: 'Connaught Place / Okhla', pincode: '110020', eta: '10 MINS', active: false },
+  { city: 'Noida', area: 'Sector 62 Tech Hub', pincode: '201301', eta: '12 MINS', active: false },
+  { city: 'Pune', area: 'Hinjawadi Phase 1', pincode: '411057', eta: '15 MINS', active: false },
+  { city: 'Chennai', area: 'OMR Tech Corridor, Taramani', pincode: '600113', eta: '12 MINS', active: false },
+  { city: 'Hyderabad', area: 'HITEC City, Madhapur', pincode: '500081', eta: '15 MINS', active: false },
+];
+
 export const Header: React.FC<HeaderProps> = ({
   cart,
   wishlistCount,
-  compareCount = 0,
   user,
   onOpenCart,
   onOpenAuth,
@@ -54,149 +55,129 @@ export const Header: React.FC<HeaderProps> = ({
   onNavigate,
   searchQuery,
   onSearchChange,
-  selectedCategory,
-  onSelectCategory,
   products,
   onSelectProduct,
 }) => {
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [selectedHub, setSelectedHub] = useState(WAREHOUSE_HUBS[0]);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Cycling search placeholder like Blinkit
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
+  const placeholders = [
+    'Search "arduino, esp32..."',
+    'Search "soldering iron, flux..."',
+    'Search "lipo battery, bms..."',
+    'Search "servo motors, sensors..."',
+    'Search "resistors, breadboard..."',
+    'Search "raspberry pi, camera..."'
+  ];
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setPlaceholderIndex((prev) => (prev + 1) % placeholders.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [placeholders.length]);
+
+  // ⌘K keyboard shortcut support
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const cartItemsCount = cart.reduce((sum, item) => sum + item.quantity, 0);
   const cartSubtotal = cart.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
 
-  // Filter products for quick search dropdown
   const searchResults = searchQuery.trim().length > 1
     ? products.filter(p => 
         p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.subCategory.toLowerCase().includes(searchQuery.toLowerCase())
+        p.sku.toLowerCase().includes(searchQuery.toLowerCase())
       ).slice(0, 5)
     : [];
 
   return (
-    <header className="sticky top-0 z-40 bg-white shadow-sm border-b border-slate-200">
-      {/* Top Announcement & Service Bar */}
-      <div className="bg-[#192737] text-slate-300 text-xs py-1.5 px-4 hidden md:block">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center space-x-6">
-            <span className="flex items-center space-x-1.5 text-slate-200">
-              <PhoneCall className="w-3.5 h-3.5 text-[#EF4F12]" />
-              <span>Helpline: <strong className="text-white">+91 080 4912 8800</strong> (Mon-Sat 9:30 AM - 6:30 PM)</span>
-            </span>
-            <span className="text-slate-400">|</span>
-            <span className="flex items-center space-x-1 text-emerald-400 font-medium">
-              <FileCheck className="w-3.5 h-3.5" />
-              <span>Claim 18% GST Input Tax Credit On All Orders</span>
-            </span>
-          </div>
-
-          <div className="flex items-center space-x-5 text-slate-300">
-            <button 
-              onClick={() => onNavigate('orders')} 
-              className="hover:text-white flex items-center space-x-1 transition-colors cursor-pointer"
-            >
-              <Truck className="w-3.5 h-3.5 text-[#EF4F12]" />
-              <span>Track Consignment</span>
-            </button>
-            <span className="text-slate-500">|</span>
-            <button 
-              onClick={() => onNavigate('b2b')}
-              className="hover:text-white cursor-pointer transition-colors"
-            >
-              B2B BOM & Quotes
-            </button>
-            <span className="text-slate-500">|</span>
-            <button 
-              onClick={() => onNavigate('fabrication')}
-              className="hover:text-white cursor-pointer transition-colors"
-            >
-              PCB & Hardware Lab
-            </button>
-            <span className="text-slate-500">|</span>
-            <button 
-              onClick={() => onNavigate('contact')}
-              className="hover:text-white cursor-pointer transition-colors flex items-center space-x-1"
-            >
-              <HelpCircle className="w-3.5 h-3.5" />
-              <span>Technical Desk</span>
-            </button>
-            <span className="text-slate-500">|</span>
-            <span className="font-semibold text-white bg-slate-800 px-2 py-0.5 rounded border border-slate-700">
-              INR ₹
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Header */}
-      <div className="max-w-7xl mx-auto px-4 py-3 sm:py-3.5">
-        <div className="flex items-center justify-between gap-4 md:gap-6">
+    <header className="sticky top-0 z-50 bg-[#fffbf7] border-b border-[#f9bf8f]/60 shadow-xs transition-all">
+      {/* Main Clean Blinkit-Style Header */}
+      <div className="max-w-7xl mx-auto px-4 py-3">
+        <div className="flex items-center justify-between gap-3 md:gap-6">
           
-          {/* Logo & Brand Identity */}
-          <div 
-            onClick={() => onNavigate('home')} 
-            className="cursor-pointer shrink-0"
-          >
-            <SpacebornLogo size="md" subtitle={true} />
+          {/* Brand Logo & Location Switcher */}
+          <div className="flex items-center space-x-3 sm:space-x-5 shrink-0">
+            {/* Spaceborn Brand Logo */}
+            <div 
+              onClick={() => onNavigate('home')} 
+              className="cursor-pointer shrink-0 mr-1 sm:mr-2 hover:opacity-90 active:scale-98 transition-all"
+              title="Spaceborn"
+            >
+              <SpacebornLogo size="md" subtitle={false} />
+            </div>
+
+            {/* Delivery Location Selector */}
+            <div 
+              onClick={() => setShowLocationModal(true)}
+              className="hidden sm:flex flex-col text-left cursor-pointer group pl-2 sm:pl-3 border-l border-[#f9bf8f]/60"
+            >
+              <div className="flex items-center space-x-1 text-[#0c831f] font-bold text-xs">
+                <span>Delivery in {selectedHub.eta}</span>
+              </div>
+              <div className="flex items-center space-x-1 text-xs text-[#34222e]/80 font-medium">
+                <MapPin className="w-3.5 h-3.5 text-[#e2434b]" />
+                <span className="truncate max-w-[170px]">{selectedHub.area}</span>
+                <ChevronDown className="w-3.5 h-3.5 text-[#34222e]/60 group-hover:translate-y-0.5 transition-transform" />
+              </div>
+            </div>
           </div>
 
-          {/* Search Bar with Category Filter */}
-          <div className="relative flex-1 max-w-2xl hidden md:block">
-            <div className="flex rounded-md border-2 border-slate-300 focus-within:border-[#EF4F12] transition-colors bg-white overflow-hidden shadow-xs">
-              <select 
-                value={selectedCategory}
-                onChange={(e) => onSelectCategory(e.target.value)}
-                className="bg-slate-50 text-xs font-semibold text-slate-700 px-3 py-2 border-r border-slate-200 outline-none cursor-pointer max-w-[150px] truncate"
-              >
-                {CATEGORIES.map(cat => (
-                  <option key={cat.id} value={cat.name}>{cat.name}</option>
-                ))}
-              </select>
-
-              <div className="relative flex-1 flex items-center">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => {
-                    onSearchChange(e.target.value);
-                    setShowSearchDropdown(true);
-                  }}
-                  onFocus={() => setShowSearchDropdown(true)}
-                  placeholder="Search 15,000+ SKUs: N20 motor, ESP32, LiPo, TB6600, soldering..."
-                  className="w-full px-3.5 py-2 text-sm text-slate-900 placeholder:text-slate-400 outline-none"
-                />
-                {searchQuery && (
+          {/* Minimalist Search Bar */}
+          <div className="relative flex-1 max-w-xl hidden md:block">
+            <div className="flex items-center rounded-xl bg-[#fee9d7]/50 border border-[#f9bf8f]/70 hover:bg-[#fffbf7] focus-within:bg-white focus-within:border-[#0c831f] focus-within:ring-2 focus-within:ring-[#0c831f]/10 transition-all overflow-hidden px-3.5 py-2">
+              <Search className="w-4 h-4 text-[#7a6274] mr-2.5 shrink-0" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchQuery}
+                onChange={(e) => {
+                  onSearchChange(e.target.value);
+                  setShowSearchDropdown(true);
+                }}
+                onFocus={() => setShowSearchDropdown(true)}
+                placeholder={placeholders[placeholderIndex]}
+                className="w-full bg-transparent text-xs sm:text-sm text-[#34222e] placeholder:text-[#7a6274]/70 outline-none font-medium"
+              />
+              <div className="flex items-center gap-1.5 shrink-0">
+                {searchQuery ? (
                   <button 
                     onClick={() => onSearchChange('')} 
-                    className="p-1 mr-2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    className="p-1 text-[#7a6274] hover:text-[#34222e] rounded-full cursor-pointer"
                   >
-                    <X className="w-4 h-4" />
+                    <X className="w-3.5 h-3.5" />
                   </button>
+                ) : (
+                  <kbd className="px-1.5 py-0.5 rounded bg-white border border-[#f9bf8f]/60 text-[#7a6274] font-mono text-[10px]">
+                    ⌘K
+                  </kbd>
                 )}
               </div>
-
-              <button 
-                onClick={() => {
-                  if (searchQuery.trim()) {
-                    onNavigate('catalog');
-                    setShowSearchDropdown(false);
-                  }
-                }}
-                className="bg-[#EF4F12] hover:bg-[#d44000] text-white px-5 flex items-center justify-center transition-colors cursor-pointer"
-              >
-                <Search className="w-4 h-4" />
-              </button>
             </div>
 
             {/* Quick Search Autocomplete Dropdown */}
             {showSearchDropdown && searchResults.length > 0 && (
               <div 
-                className="absolute left-0 right-0 top-full mt-1.5 bg-white rounded-lg shadow-xl border border-slate-200 py-2 z-50 divide-y divide-slate-100"
+                className="absolute left-0 right-0 top-full mt-2 bg-white rounded-2xl shadow-xl border border-[#f9bf8f]/60 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150"
                 onMouseLeave={() => setShowSearchDropdown(false)}
               >
-                <div className="px-3 py-1.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                  Matching Technical Components ({searchResults.length})
+                <div className="px-4 py-1.5 text-[11px] font-bold text-[#7a6274] border-b border-[#f9bf8f]/30 flex items-center justify-between">
+                  <span>Search Suggestions</span>
+                  <span className="text-[#0c831f] font-semibold">10-15 Min Delivery</span>
                 </div>
                 {searchResults.map(p => (
                   <div
@@ -205,266 +186,136 @@ export const Header: React.FC<HeaderProps> = ({
                       onSelectProduct(p);
                       setShowSearchDropdown(false);
                     }}
-                    className="px-3 py-2 hover:bg-slate-50 flex items-center justify-between cursor-pointer transition-colors"
+                    className="px-4 py-2 hover:bg-[#fee9d7]/50 flex items-center justify-between cursor-pointer transition-colors group"
                   >
                     <div className="flex items-center space-x-3">
-                      <img src={p.image} alt={p.name} className="w-9 h-9 object-contain bg-slate-100 p-1 rounded border border-slate-200" />
+                      <div className="w-10 h-10 rounded-lg bg-[#fffbf7] border border-[#f9bf8f]/40 flex items-center justify-center p-1">
+                        <img src={p.image} alt={p.name} className="max-w-full max-h-full object-contain" />
+                      </div>
                       <div>
-                        <p className="text-xs font-semibold text-slate-900 line-clamp-1">{p.name}</p>
-                        <p className="text-[10px] text-slate-500">SKU: {p.sku} | In Stock: {p.stock} pcs</p>
+                        <p className="text-xs font-semibold text-[#34222e] line-clamp-1 group-hover:text-[#e2434b]">{p.name}</p>
+                        <p className="text-[10px] text-[#7a6274]">SKU: {p.sku}</p>
                       </div>
                     </div>
-                    <span className="text-xs font-bold text-[#EF4F12] shrink-0 ml-2">₹{p.price}</span>
+                    <span className="text-xs font-bold text-[#34222e] bg-[#fee9d7] px-2 py-1 rounded-md">
+                      ₹{p.price}
+                    </span>
                   </div>
                 ))}
-                <div 
-                  onClick={() => {
-                    onNavigate('catalog');
-                    setShowSearchDropdown(false);
-                  }}
-                  className="p-2 text-center text-xs font-semibold text-[#0051d5] hover:bg-blue-50 cursor-pointer"
-                >
-                  View all matching components in catalog →
-                </div>
               </div>
             )}
           </div>
 
-          {/* Quick Actions & Navigation Controls */}
-          <div className="flex items-center space-x-2 sm:space-x-4">
+          {/* Right Action Controls */}
+          <div className="flex items-center space-x-2 sm:space-x-3 shrink-0">
             
-            {/* Account & Authentication Controls */}
+            {/* Seller / Vendor Hub Action */}
+            <button 
+              onClick={() => onNavigate('vendor')}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#0c831f]/30 bg-[#f2fcf4] hover:bg-[#0c831f] hover:text-white text-[#0c831f] text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
+              title="Vendor & Business Seller Hub"
+            >
+              <Store className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Seller Hub</span>
+            </button>
+
+            {/* Orders Action */}
+            <button 
+              onClick={() => onNavigate('orders')}
+              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#f9bf8f]/60 bg-[#fffbf7] hover:bg-[#fee9d7]/50 text-[#34222e] text-xs font-semibold transition-all cursor-pointer"
+            >
+              <Receipt className="w-4 h-4 text-[#7a6274]" />
+              <span>Orders</span>
+            </button>
+
+            {/* Account Profile Icon */}
             <div className="relative">
               {user ? (
                 <button
                   onClick={() => setShowAccountMenu(!showAccountMenu)}
-                  className="flex items-center space-x-2 text-slate-700 hover:text-[#EF4F12] p-1.5 rounded-lg hover:bg-slate-100 transition cursor-pointer"
+                  className="flex items-center space-x-2 text-[#34222e] p-1 rounded-xl hover:bg-[#fee9d7]/50 transition cursor-pointer"
                 >
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#EF4F12] to-[#ff7a45] text-white font-bold text-xs flex items-center justify-center shadow-xs">
+                  <div className="w-8 h-8 rounded-full bg-[#34222e] text-[#fee9d7] font-bold text-xs flex items-center justify-center">
                     {user.fullName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                   </div>
-                  <div className="text-left hidden lg:block">
-                    <span className="text-[10px] text-slate-500 block leading-tight truncate max-w-[120px]">
-                      {user.companyName || user.makerLevel || 'Maker Account'}
-                    </span>
-                    <span className="text-xs font-bold text-slate-800 flex items-center">
-                      {user.fullName.split(' ')[0]} <ChevronDown className="w-3 h-3 ml-1 text-slate-400" />
+                  <div className="text-left hidden lg:block pr-1">
+                    <span className="text-xs font-bold text-[#34222e] flex items-center">
+                      {user.fullName.split(' ')[0]} <ChevronDown className="w-3 h-3 ml-1 text-[#7a6274]" />
                     </span>
                   </div>
                 </button>
               ) : (
                 <button
                   onClick={() => onOpenAuth('login')}
-                  className="flex items-center space-x-1.5 bg-[#EF4F12]/10 hover:bg-[#EF4F12] text-[#EF4F12] hover:text-white px-3 py-2 rounded-lg text-xs font-bold transition cursor-pointer border border-[#EF4F12]/20"
+                  className="flex items-center space-x-1.5 text-[#34222e] hover:text-[#e2434b] px-3.5 py-2 rounded-xl text-xs font-bold transition hover:bg-[#fee9d7]/50 border border-[#f9bf8f]/60 cursor-pointer"
                 >
-                  <User className="w-3.5 h-3.5" />
-                  <span>Sign In</span>
+                  <User className="w-4 h-4" />
+                  <span>Login</span>
                 </button>
               )}
 
+              {/* Account Dropdown */}
               {showAccountMenu && user && (
                 <div 
-                  className="absolute right-0 top-full mt-2 w-64 bg-white rounded-xl shadow-xl border border-slate-200 py-2 z-50 divide-y divide-slate-100 animate-in fade-in zoom-in-95 duration-100"
+                  className="absolute right-0 top-full mt-2 w-56 bg-[#fffbf7] rounded-2xl shadow-xl border border-[#f9bf8f]/60 p-2 z-50 animate-in fade-in zoom-in-95 duration-150"
                   onMouseLeave={() => setShowAccountMenu(false)}
                 >
-                  <div className="px-4 py-2.5">
-                    <p className="text-xs font-bold text-slate-900">{user.fullName}</p>
-                    <p className="text-[11px] text-slate-500 truncate">{user.email}</p>
-                    <div className="flex items-center gap-1.5 mt-1.5">
-                      {user.accountType === 'business' ? (
-                        <span className="inline-block text-[10px] font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded">
-                          Verified B2B ({user.gstDetails?.gstin ? 'GSTIN Active' : 'Corporate'})
-                        </span>
-                      ) : (
-                        <span className="inline-block text-[10px] font-semibold bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
-                          {user.makerLevel || 'Maker Pro'}
-                        </span>
-                      )}
-                    </div>
+                  <div className="px-3 py-2 bg-[#fee9d7] rounded-xl border border-[#f9bf8f]/50 mb-1.5">
+                    <p className="text-xs font-bold text-[#34222e]">{user.fullName}</p>
+                    <p className="text-[10px] text-[#7a6274] truncate">{user.email}</p>
                   </div>
 
-                  <div className="py-1 text-xs">
+                  <div className="space-y-0.5">
                     {user.role === 'admin' && (
                       <button
                         onClick={() => {
                           onNavigate('admin');
                           setShowAccountMenu(false);
                         }}
-                        className="w-full text-left px-4 py-2 hover:bg-orange-50 flex items-center space-x-2.5 text-[#c43b0b] font-bold transition cursor-pointer"
+                        className="w-full text-left px-3 py-2 rounded-lg hover:bg-orange-50 flex items-center space-x-2.5 text-[#e2434b] text-xs font-bold transition cursor-pointer"
                       >
-                        <ShieldCheck className="w-4 h-4" />
+                        <ShieldCheck className="w-3.5 h-3.5 text-[#e2434b]" />
                         <span>Admin Product Management</span>
                       </button>
                     )}
-                    <button 
-                      onClick={() => {
-                        onNavigate('profile');
-                        setShowAccountMenu(false);
-                      }}
-                      className="w-full text-left px-4 py-2 hover:bg-slate-50 flex items-center space-x-2.5 text-slate-700 hover:text-[#EF4F12] transition cursor-pointer"
-                    >
-                      <Settings className="w-4 h-4 text-slate-400" />
-                      <span>Account Profile & Addresses</span>
+                    <button onClick={() => { onNavigate('vendor'); setShowAccountMenu(false); }} className="w-full text-left px-3 py-2 rounded-lg hover:bg-[#fee9d7]/50 flex items-center space-x-2.5 text-[#0c831f] text-xs font-bold cursor-pointer bg-[#f2fcf4]">
+                      <Store className="w-3.5 h-3.5 text-[#0c831f]" /> <span>Vendor / Seller Hub</span>
                     </button>
-
-                    <button 
-                      onClick={() => {
-                        onNavigate('orders');
-                        setShowAccountMenu(false);
-                      }}
-                      className="w-full text-left px-4 py-2 hover:bg-slate-50 flex items-center justify-between text-slate-700 hover:text-[#EF4F12] transition cursor-pointer"
-                    >
-                      <span className="flex items-center space-x-2.5">
-                        <Truck className="w-4 h-4 text-slate-400" />
-                        <span>Live Telemetry & Orders</span>
-                      </span>
-                      <span className="bg-orange-100 text-[#EF4F12] text-[10px] font-bold px-1.5 py-0.5 rounded-full">Active</span>
+                    <button onClick={() => { onNavigate('profile'); setShowAccountMenu(false); }} className="w-full text-left px-3 py-2 rounded-lg hover:bg-[#fee9d7]/50 flex items-center space-x-2.5 text-[#34222e] text-xs font-medium cursor-pointer">
+                      <Settings className="w-3.5 h-3.5 text-[#7a6274]" /> <span>Account Profile</span>
                     </button>
-
-                    <button 
-                      onClick={() => {
-                        onNavigate('orders');
-                        setShowAccountMenu(false);
-                      }}
-                      className="w-full text-left px-4 py-2 hover:bg-slate-50 flex items-center space-x-2.5 text-slate-700 hover:text-[#EF4F12] transition cursor-pointer"
-                    >
-                      <FileCheck className="w-4 h-4 text-slate-400" />
-                      <span>GST E-Invoices Archive</span>
+                    <button onClick={() => { onNavigate('orders'); setShowAccountMenu(false); }} className="w-full text-left px-3 py-2 rounded-lg hover:bg-[#fee9d7]/50 flex items-center space-x-2.5 text-[#34222e] text-xs font-medium cursor-pointer">
+                      <Receipt className="w-3.5 h-3.5 text-[#0c831f]" /> <span>My Orders</span>
                     </button>
-
-                    <button 
-                      onClick={() => {
-                        onNavigate('wishlist');
-                        setShowAccountMenu(false);
-                      }}
-                      className="w-full text-left px-4 py-2 hover:bg-slate-50 flex items-center justify-between text-slate-700 hover:text-[#EF4F12] transition cursor-pointer"
-                    >
-                      <span className="flex items-center space-x-2.5">
-                        <Heart className="w-4 h-4 text-rose-400" />
-                        <span>Saved Wishlist Items</span>
-                      </span>
-                      {wishlistCount > 0 && (
-                        <span className="bg-rose-100 text-rose-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full">{wishlistCount}</span>
-                      )}
-                    </button>
-
-                    <button 
-                      onClick={() => {
-                        onNavigate('b2b');
-                        setShowAccountMenu(false);
-                      }}
-                      className="w-full text-left px-4 py-2 hover:bg-slate-50 flex items-center space-x-2.5 text-slate-700 hover:text-[#EF4F12] transition cursor-pointer"
-                    >
-                      <Building2 className="w-4 h-4 text-slate-400" />
-                      <span>B2B BOM & Institutional Quotes</span>
-                    </button>
-
-                    <button 
-                      onClick={() => {
-                        onNavigate('fabrication');
-                        setShowAccountMenu(false);
-                      }}
-                      className="w-full text-left px-4 py-2 hover:bg-slate-50 flex items-center space-x-2.5 text-slate-700 hover:text-[#EF4F12] transition cursor-pointer"
-                    >
-                      <Layers className="w-4 h-4 text-slate-400" />
-                      <span>PCB & Hardware Prototyping Lab</span>
-                    </button>
-
-                    <button 
-                      onClick={() => {
-                        onNavigate('datasheets');
-                        setShowAccountMenu(false);
-                      }}
-                      className="w-full text-left px-4 py-2 hover:bg-slate-50 flex items-center space-x-2.5 text-slate-700 hover:text-[#EF4F12] transition cursor-pointer"
-                    >
-                      <FileText className="w-4 h-4 text-slate-400" />
-                      <span>Datasheets & 3D STEP Library</span>
-                    </button>
-
-                    <button 
-                      onClick={() => {
-                        onNavigate('warranty');
-                        setShowAccountMenu(false);
-                      }}
-                      className="w-full text-left px-4 py-2 hover:bg-slate-50 flex items-center space-x-2.5 text-slate-700 hover:text-[#EF4F12] transition cursor-pointer"
-                    >
-                      <ShieldCheck className="w-4 h-4 text-slate-400" />
-                      <span>Warranty & 10-Day RMA Returns</span>
-                    </button>
-
-                    <button 
-                      onClick={() => {
-                        onOpenAuth('login');
-                        setShowAccountMenu(false);
-                      }}
-                      className="w-full text-left px-4 py-2 hover:bg-slate-50 flex items-center space-x-2.5 text-slate-700 hover:text-[#EF4F12] transition cursor-pointer"
-                    >
-                      <UserCheck className="w-4 h-4 text-slate-400" />
-                      <span>Switch Account / Demo Logins</span>
+                    <button onClick={() => { onNavigate('wishlist'); setShowAccountMenu(false); }} className="w-full text-left px-3 py-2 rounded-lg hover:bg-[#fee9d7]/50 flex items-center space-x-2.5 text-[#34222e] text-xs font-medium cursor-pointer">
+                      <Heart className="w-3.5 h-3.5 text-[#e2434b]" /> <span>Wishlist ({wishlistCount})</span>
                     </button>
                   </div>
-
-                  <div className="pt-1">
-                    <button 
-                      onClick={() => {
-                        onSignOut();
-                        setShowAccountMenu(false);
-                      }}
-                      className="w-full text-left px-4 py-2 hover:bg-red-50 text-red-600 flex items-center space-x-2.5 text-xs font-semibold transition cursor-pointer"
-                    >
-                      <LogOut className="w-4 h-4 text-red-500" />
-                      <span>Sign Out</span>
+                  
+                  <div className="mt-1.5 pt-1.5 border-t border-[#f9bf8f]/30">
+                    <button onClick={() => { onSignOut(); setShowAccountMenu(false); }} className="w-full text-left px-3 py-1.5 rounded-lg hover:bg-rose-50 text-[#e2434b] flex items-center space-x-2.5 text-xs font-bold transition cursor-pointer">
+                      <LogOut className="w-3.5 h-3.5" /> <span>Sign Out</span>
                     </button>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Compare Tool */}
-            <button 
-              onClick={() => onNavigate('compare')}
-              className="relative p-2 text-slate-600 hover:text-[#EF4F12] rounded-md hover:bg-slate-100 transition hidden sm:flex items-center cursor-pointer"
-              title="Compare Components"
-            >
-              <RefreshCw className="w-5 h-5" />
-              {compareCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-                  {compareCount}
-                </span>
-              )}
-            </button>
-
-            {/* Wishlist */}
-            <button 
-              onClick={() => onNavigate('wishlist')}
-              className="relative p-2 text-slate-600 hover:text-[#EF4F12] rounded-md hover:bg-slate-100 transition hidden sm:flex items-center cursor-pointer"
-              title="Saved Wishlist"
-            >
-              <Heart className="w-5 h-5" />
-              {wishlistCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-[#EF4F12] text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-                  {wishlistCount}
-                </span>
-              )}
-            </button>
-
-            {/* Cart Drawer Trigger */}
+            {/* Blinkit Green Cart Button */}
             <button
               onClick={onOpenCart}
-              className="flex items-center space-x-2.5 bg-[#EF4F12] hover:bg-[#d44000] text-white px-3 sm:px-4 py-2 rounded-lg transition-all shadow-sm shadow-orange-500/20 cursor-pointer shrink-0"
+              className="inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl bg-[#0c831f] hover:bg-[#0a6e1a] text-white font-bold text-xs sm:text-sm shadow-sm transition-all duration-150 active:scale-[0.98] cursor-pointer shrink-0"
             >
-              <div className="relative">
-                <ShoppingCart className="w-5 h-5" />
-                {cartItemsCount > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-slate-900 text-white text-[10px] font-extrabold w-4 h-4 rounded-full flex items-center justify-center">
-                    {cartItemsCount}
+              <ShoppingCart className="w-4 h-4" />
+              <span>{cartItemsCount > 0 ? `${cartItemsCount} items` : 'Cart'}</span>
+              {cartItemsCount > 0 && (
+                <>
+                  <span className="text-white/60 text-xs">•</span>
+                  <span className="font-bold text-xs text-white">
+                    ₹{cartSubtotal.toLocaleString('en-IN')}
                   </span>
-                )}
-              </div>
-              <div className="text-left hidden sm:block">
-                <span className="text-[10px] text-orange-200 block uppercase font-bold tracking-wider leading-none">Cart</span>
-                <span className="text-xs font-extrabold text-white">₹{cartSubtotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-              </div>
+                </>
+              )}
             </button>
 
           </div>
@@ -473,23 +324,74 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Mobile Search Bar */}
         <div className="mt-2.5 block md:hidden">
-          <div className="relative flex rounded-md border border-slate-300 focus-within:border-[#EF4F12] bg-white overflow-hidden">
+          <div className="flex items-center rounded-xl bg-[#fee9d7]/50 border border-[#f9bf8f]/70 px-3 py-2">
+            <Search className="w-4 h-4 text-[#7a6274] mr-2" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
-              placeholder="Search motors, ESP32, sensors..."
-              className="w-full px-3 py-2 text-sm text-slate-900 outline-none"
+              placeholder="Search components, sensors, motors..."
+              className="w-full bg-transparent text-xs text-[#34222e] placeholder:text-[#7a6274]/70 outline-none font-medium"
             />
-            <button 
-              onClick={() => onNavigate('catalog')}
-              className="bg-[#EF4F12] text-white px-4 flex items-center justify-center"
-            >
-              <Search className="w-4 h-4" />
-            </button>
           </div>
         </div>
       </div>
+
+      {/* Location Picker Modal */}
+      {showLocationModal && createPortal(
+        <div className="fixed inset-0 z-50 bg-[#34222e]/40 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-[#fffbf7] rounded-3xl max-w-md w-full p-6 shadow-2xl border border-[#f9bf8f]/60 relative text-[#34222e]">
+            <button
+              onClick={() => setShowLocationModal(false)}
+              className="absolute top-4 right-4 p-2 text-[#7a6274] hover:text-[#34222e] rounded-full hover:bg-[#fee9d7] cursor-pointer transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <h3 className="text-base font-bold text-[#34222e] mb-1">
+              Select delivery location
+            </h3>
+            <p className="text-xs text-[#7a6274] mb-4">
+              Choose your location for 10-15 minute delivery.
+            </p>
+
+            <div className="space-y-2">
+              {WAREHOUSE_HUBS.map((hub) => (
+                <div
+                  key={hub.pincode}
+                  onClick={() => {
+                    setSelectedHub(hub);
+                    setShowLocationModal(false);
+                  }}
+                  className={`p-3.5 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${
+                    selectedHub.pincode === hub.pincode
+                      ? 'border-[#0c831f] bg-[#f2fcf4] ring-1 ring-[#0c831f]'
+                      : 'border-[#f9bf8f]/40 hover:border-[#f9bf8f] hover:bg-[#fee9d7]/30'
+                  }`}
+                >
+                  <div className="flex items-start space-x-3">
+                    <MapPin className="w-4 h-4 text-[#e2434b] mt-0.5 shrink-0" />
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xs font-bold text-[#34222e]">{hub.city}</span>
+                        <span className="text-[10px] bg-[#fee9d7] px-1.5 py-0.5 rounded text-[#34222e]">{hub.pincode}</span>
+                      </div>
+                      <p className="text-xs text-[#7a6274] mt-0.5">{hub.area}</p>
+                    </div>
+                  </div>
+
+                  <div className="text-right">
+                    <span className="text-xs font-bold text-[#0c831f] bg-white border border-[#0c831f]/20 px-2 py-0.5 rounded-md">
+                      {hub.eta}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </header>
   );
 };

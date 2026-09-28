@@ -1,7 +1,7 @@
 import React from 'react';
-import { Menu, Zap, Cpu, Compass, Flame, Box, ShieldCheck, Sparkles, ChevronRight, Building2, Layers, FileText } from 'lucide-react';
-import { CATEGORIES } from '../data/products';
 import { AppView } from '../types';
+import { CATEGORIES } from '../data/products';
+import { Menu, Zap, Cpu, Compass, Flame, Box, ShieldCheck, Battery, Wrench } from 'lucide-react';
 
 interface CategoryNavProps {
   onNavigate: (view: AppView) => void;
@@ -9,32 +9,30 @@ interface CategoryNavProps {
   onSelectCategory: (cat: string) => void;
 }
 
+const CAT_ICONS: Record<string, React.ReactNode> = {
+  'All Categories': <Menu className="w-3.5 h-3.5" />,
+  'Motors & Drivers': <Zap className="w-3.5 h-3.5" />,
+  'Development Boards': <Cpu className="w-3.5 h-3.5" />,
+  'Sensors & Modules': <Compass className="w-3.5 h-3.5" />,
+  'Batteries & Chargers': <Battery className="w-3.5 h-3.5" />,
+  'DIY Kits': <Flame className="w-3.5 h-3.5" />,
+  'Robotics & Mechanical': <Box className="w-3.5 h-3.5" />,
+  'Tools & Soldering': <Wrench className="w-3.5 h-3.5" />,
+  'Components': <ShieldCheck className="w-3.5 h-3.5" />,
+};
+
 export const CategoryNav: React.FC<CategoryNavProps> = ({
   onNavigate,
   selectedCategory,
   onSelectCategory,
 }) => {
   return (
-    <nav className="bg-[#192737] text-white border-t border-slate-700 text-xs select-none">
-      <div className="max-w-7xl mx-auto px-4 flex items-center justify-between overflow-x-auto no-scrollbar">
+    <nav className="bg-[#fffbf7] border-b border-[#f9bf8f]/60 sticky top-[60px] z-30 select-none overflow-hidden shadow-xs">
+      <div className="max-w-7xl mx-auto px-4 flex items-center justify-between py-2 text-xs">
         
-        {/* All Categories Dropdown Trigger */}
-        <div className="flex items-center space-x-1 shrink-0">
-          <button 
-            onClick={() => {
-              onSelectCategory('All Categories');
-              onNavigate('catalog');
-            }}
-            className="flex items-center space-x-2 bg-[#EF4F12] hover:bg-[#d44000] text-white font-bold px-4 py-2.5 transition-colors cursor-pointer uppercase tracking-wider"
-          >
-            <Menu className="w-4 h-4" />
-            <span>Shop Categories</span>
-          </button>
-        </div>
-
-        {/* Categories Horizontal Quick Scroll */}
-        <div className="flex items-center space-x-1 sm:space-x-2 py-2 px-2 overflow-x-auto whitespace-nowrap">
-          {CATEGORIES.slice(1, 8).map((cat) => {
+        {/* Horizontal Category Rail */}
+        <div className="flex items-center space-x-2 sm:space-x-2.5 overflow-x-auto no-scrollbar py-0.5">
+          {CATEGORIES.slice(0, 9).map((cat) => {
             const isActive = selectedCategory === cat.name;
             return (
               <button
@@ -43,43 +41,19 @@ export const CategoryNav: React.FC<CategoryNavProps> = ({
                   onSelectCategory(cat.name);
                   onNavigate('catalog');
                 }}
-                className={`px-3 py-1 rounded transition-colors font-medium flex items-center space-x-1.5 cursor-pointer ${
-                  isActive 
-                    ? 'bg-slate-700 text-white font-bold' 
-                    : 'text-slate-300 hover:text-white hover:bg-slate-800'
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all duration-150 cursor-pointer ${
+                  isActive
+                    ? 'bg-[#0c831f] text-white shadow-xs'
+                    : 'bg-[#fee9d7]/60 border border-[#f9bf8f]/60 text-[#34222e] hover:bg-[#fee9d7]'
                 }`}
               >
+                <span className={isActive ? 'text-white' : 'text-[#e2434b]'}>
+                  {CAT_ICONS[cat.name] || <Box className="w-3.5 h-3.5" />}
+                </span>
                 <span>{cat.name}</span>
               </button>
             );
           })}
-        </div>
-
-        {/* Right Engineering Lab Shortcuts */}
-        <div className="hidden lg:flex items-center space-x-4 shrink-0 text-slate-300 text-[11px]">
-          <button 
-            onClick={() => onNavigate('b2b')}
-            className="flex items-center space-x-1 hover:text-[#EF4F12] transition-colors cursor-pointer font-semibold text-orange-400"
-          >
-            <Building2 className="w-3.5 h-3.5" />
-            <span>B2B BOM Quote</span>
-          </button>
-
-          <button 
-            onClick={() => onNavigate('fabrication')}
-            className="flex items-center space-x-1 hover:text-[#EF4F12] transition-colors cursor-pointer text-slate-300"
-          >
-            <Layers className="w-3.5 h-3.5 text-blue-400" />
-            <span>PCB Lab</span>
-          </button>
-
-          <button 
-            onClick={() => onNavigate('datasheets')}
-            className="flex items-center space-x-1 hover:text-[#EF4F12] transition-colors cursor-pointer text-slate-300"
-          >
-            <FileText className="w-3.5 h-3.5 text-amber-400" />
-            <span>Datasheets</span>
-          </button>
         </div>
 
       </div>

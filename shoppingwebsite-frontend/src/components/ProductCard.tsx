@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Product } from '../types';
-import { ShoppingCart, Star, Eye, Check, Shield, Cpu } from 'lucide-react';
+import { Eye, Zap, Plus, Minus, Star } from 'lucide-react';
 
 interface ProductCardProps {
   product: Product;
-  onSelect: (p: Product) => void;
-  onAddToCart: (p: Product, qty: number) => void;
-  onQuickView?: (p: Product) => void;
+  onSelect: (product: Product) => void;
+  onAddToCart: (product: Product, quantity?: number) => void;
+  onQuickView?: (product: Product) => void;
+  cartQuantity?: number;
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({
@@ -14,17 +15,43 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   onSelect,
   onAddToCart,
   onQuickView,
+  cartQuantity = 0,
 }) => {
-  const [quantity, setQuantity] = useState(1);
-  const [isAdded, setIsAdded] = useState(false);
+  const [quantity, setQuantity] = useState(cartQuantity);
+  const [isAdded, setIsAdded] = useState(cartQuantity > 0);
 
-  const priceExGst = (product.price / (1 + product.gstRate / 100)).toFixed(2);
+  useEffect(() => {
+    setQuantity(cartQuantity);
+    setIsAdded(cartQuantity > 0);
+  }, [cartQuantity]);
 
   const handleAdd = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onAddToCart(product, quantity);
     setIsAdded(true);
-    setTimeout(() => setIsAdded(false), 1400);
+    setQuantity(1);
+    onAddToCart(product, 1);
+  };
+
+  const handleIncrement = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (quantity < product.stock) {
+      const next = quantity + 1;
+      setQuantity(next);
+      onAddToCart(product, next);
+    }
+  };
+
+  const handleDecrement = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (quantity > 1) {
+      const next = quantity - 1;
+      setQuantity(next);
+      onAddToCart(product, next);
+    } else {
+      setIsAdded(false);
+      setQuantity(0);
+      onAddToCart(product, 0);
+    }
   };
 
   const handleQuickViewClick = (e: React.MouseEvent) => {
@@ -36,169 +63,143 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     }
   };
 
+  const deliveryTime = product.deliveryMins || 10;
+  const discountPercent = product.originalPrice && product.originalPrice > product.price
+    ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
+    : null;
+
+  // Short spec string for quick commerce scanning (e.g. "12V • 300 RPM • Hall Enc.")
+  const specSummary = product.rpm 
+    ? `${product.voltage || '12V'} • ${product.rpm} RPM`
+    : product.shaftType
+    ? `${product.shaftType} • 1 Unit`
+    : product.packSize || '1 Unit • Standard Pack';
+
   return (
-    <div 
+    <article 
       onClick={() => onSelect(product)}
-      className="group relative bg-white rounded-xl border border-slate-200 hover:border-[#EF4F12]/50 hover:shadow-lg transition-all duration-200 flex flex-col justify-between overflow-hidden cursor-pointer"
+      className="bg-[#fffbf7] border border-[#f9bf8f]/60 hover:border-[#0c831f] hover:shadow-md rounded-2xl p-2.5 sm:p-3 transition-all duration-200 flex flex-col justify-between group overflow-hidden cursor-pointer relative shadow-xs"
     >
-      {/* Top Badges */}
-      <div className="absolute top-2.5 left-2.5 z-10 flex flex-col gap-1">
-        {product.badge && (
-          <span className="bg-[#EF4F12] text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-xs uppercase tracking-wide">
-            {product.badge}
-          </span>
-        )}
-        {product.stock > 0 ? (
-          <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-semibold px-1.5 py-0.5 rounded">
-            In Stock: {product.stock} pcs
-          </span>
-        ) : (
-          <span className="bg-rose-50 text-rose-700 text-[9px] font-semibold px-1.5 py-0.5 rounded">
-            Backorder
-          </span>
-        )}
+      {/* Top Badges Row */}
+      <div className="flex items-center justify-between mb-1.5 relative z-10">
+        {/* Delivery ETA Badge */}
+        <span className="inline-flex items-center gap-1 text-[10.5px] font-black text-[#0c831f] uppercase tracking-wide">
+          <Zap className="w-3 h-3 fill-[#0c831f]" />
+          <span>{deliveryTime} MINS</span>
+        </span>
+
+        <div className="flex items-center gap-1">
+          {/* Discount Ribbon */}
+          {discountPercent && discountPercent > 0 && (
+            <span className="bg-[#e2434b] text-white text-[9.5px] font-black px-1.5 py-0.5 rounded shadow-xs uppercase tracking-wider">
+              {discountPercent}% OFF
+            </span>
+          )}
+
+          {/* Quick View Button */}
+          <button
+            onClick={handleQuickViewClick}
+            className="w-6 h-6 rounded-full bg-white/90 text-[#34222e]/60 hover:text-[#e2434b] hover:bg-white flex items-center justify-center transition opacity-0 group-hover:opacity-100 cursor-pointer shadow-xs border border-[#f9bf8f]/40"
+            title="Quick View"
+          >
+            <Eye className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
 
-      {/* Quick View Hover Button */}
-      <button
-        onClick={handleQuickViewClick}
-        className="absolute top-2.5 right-2.5 z-10 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-slate-600 hover:text-[#EF4F12] shadow-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer border border-slate-200"
-        title="Quick View Specifications"
-      >
-        <Eye className="w-4 h-4" />
-      </button>
-
-      {/* Image Container */}
-      <div className="p-4 pt-8 bg-slate-50/50 flex items-center justify-center h-48 border-b border-slate-100 relative overflow-hidden">
-        <img
-          src={product.image}
+      {/* Product Image on Clean Light Canvas */}
+      <div className="w-full h-36 rounded-xl bg-white border border-[#f9bf8f]/30 flex items-center justify-center p-2 mb-2 overflow-hidden relative">
+        <img 
+          src={product.image} 
           alt={product.name}
-          className="max-h-40 max-w-full object-contain group-hover:scale-105 transition-transform duration-300"
+          className="max-h-full max-w-full object-contain transition-transform duration-300 ease-out group-hover:scale-110 will-change-transform"
           loading="lazy"
-          referrerPolicy="no-referrer"
         />
       </div>
 
-      {/* Product Content Details */}
-      <div className="p-4 flex-1 flex flex-col justify-between">
+      {/* Product Info */}
+      <div className="flex-1 flex flex-col justify-between">
         <div>
-          {/* Brand & SKU */}
-          <div className="flex items-center justify-between text-[11px] text-slate-500 mb-1">
-            <span className="font-semibold text-slate-700 truncate max-w-[140px]">{product.brand}</span>
-            <span className="font-mono text-[10px]">SKU: {product.sku}</span>
+          {/* Category / Brand Tag */}
+          <div className="flex items-center justify-between text-[10px] text-[#34222e]/60 font-medium mb-0.5">
+            <span className="truncate max-w-[120px] font-bold text-[#e2434b] uppercase tracking-wider">{product.brand}</span>
+            <span className="flex items-center gap-0.5 font-bold text-[#34222e]/80">
+              <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+              <span>{product.rating}</span>
+            </span>
           </div>
 
-          {/* Title */}
-          <h3 className="text-xs sm:text-sm font-bold text-slate-900 line-clamp-2 hover:text-[#EF4F12] transition-colors leading-snug mb-2">
+          {/* Title: 2-line clamped like Blinkit */}
+          <h3 className="text-xs font-bold text-[#34222e] line-clamp-2 leading-snug group-hover:text-[#e2434b] transition-colors mb-1">
             {product.name}
           </h3>
 
-          {/* Ratings */}
-          <div className="flex items-center space-x-1 mb-2.5">
-            <div className="flex items-center text-amber-400">
-              {[...Array(5)].map((_, i) => (
-                <Star
-                  key={i}
-                  className={`w-3 h-3 ${i < Math.floor(product.rating) ? 'fill-amber-400 text-amber-400' : 'text-slate-300'}`}
-                />
-              ))}
-            </div>
-            <span className="text-[11px] font-bold text-slate-700">{product.rating}</span>
-            <span className="text-[10px] text-slate-400">({product.reviewsCount})</span>
-          </div>
-
-          {/* Key Engineering Specs tag if available */}
-          <div className="flex flex-wrap gap-1 mb-3">
-            {product.voltage && (
-              <span className="bg-slate-100 text-slate-700 text-[10px] px-1.5 py-0.5 rounded font-mono">
-                {product.voltage}
-              </span>
-            )}
-            {product.rpm && (
-              <span className="bg-slate-100 text-slate-700 text-[10px] px-1.5 py-0.5 rounded font-mono">
-                {product.rpm} RPM
-              </span>
-            )}
-            {product.encoder && (
-              <span className="bg-blue-50 text-blue-700 border border-blue-200 text-[10px] px-1.5 py-0.5 rounded font-medium">
-                Hall Encoder
-              </span>
-            )}
-          </div>
+          {/* Clean Technical Spec Line */}
+          <p className="text-[11px] font-medium text-[#34222e]/70 truncate mb-2">
+            {specSummary}
+          </p>
         </div>
 
-        {/* Pricing Section */}
-        <div className="pt-2 border-t border-slate-100">
-          <div className="flex items-baseline space-x-2">
-            <span className="text-base sm:text-lg font-black text-[#192737]">
-              ₹{product.price.toLocaleString('en-IN')}
+        {/* Pricing & Iconic Blinkit ADD / Stepper Button */}
+        <div className="pt-2 border-t border-[#f9bf8f]/30 flex items-center justify-between mt-auto">
+          <div className="flex flex-col">
+            <div className="flex items-baseline space-x-1">
+              <span className="text-xs sm:text-sm font-black text-[#34222e]">
+                ₹{product.price.toLocaleString('en-IN')}
+              </span>
+              {product.originalPrice && product.originalPrice > product.price && (
+                <span className="text-[10px] text-[#34222e]/40 line-through font-medium">
+                  ₹{product.originalPrice}
+                </span>
+              )}
+            </div>
+            <span className="text-[9px] text-[#34222e]/60 font-medium">
+              (Incl. 18% GST)
             </span>
-            {product.originalPrice && product.originalPrice > product.price && (
-              <span className="text-xs text-slate-400 line-through">
-                ₹{product.originalPrice}
+          </div>
+
+          {/* Dynamic Stepper Button (Blinkit Style) */}
+          <div onClick={(e) => e.stopPropagation()} className="shrink-0 w-[72px] h-8">
+            {product.stock > 0 ? (
+              !isAdded || quantity === 0 ? (
+                <button
+                  type="button"
+                  onClick={handleAdd}
+                  className="w-[72px] h-8 rounded-lg border-2 border-[#0c831f] text-[#0c831f] bg-[#f2fcf4] hover:bg-[#0c831f] hover:text-white font-black text-[11px] uppercase tracking-wider transition-all flex items-center justify-center shadow-xs cursor-pointer active:scale-95"
+                >
+                  ADD
+                </button>
+              ) : (
+                <div className="w-[72px] h-8 rounded-lg bg-[#0c831f] text-white flex items-center justify-between px-1.5 font-bold text-xs shadow-sm shadow-[#0c831f]/30 animate-in zoom-in-95 duration-150">
+                  <button 
+                    type="button"
+                    onClick={handleDecrement}
+                    className="w-5 h-5 flex items-center justify-center hover:bg-black/20 rounded transition-colors active:scale-90 cursor-pointer"
+                    title="Decrease"
+                  >
+                    <Minus className="w-3 h-3 stroke-[3]" />
+                  </button>
+                  <span className="text-[12px] font-black tabular-nums">{quantity}</span>
+                  <button 
+                    type="button"
+                    onClick={handleIncrement}
+                    disabled={quantity >= product.stock}
+                    className="w-5 h-5 flex items-center justify-center hover:bg-black/20 rounded transition-colors active:scale-90 cursor-pointer disabled:opacity-30"
+                    title="Increase"
+                  >
+                    <Plus className="w-3 h-3 stroke-[3]" />
+                  </button>
+                </div>
+              )
+            ) : (
+              <span className="h-8 px-2 rounded-lg font-bold text-[9px] bg-[#fcedde] text-[#34222e]/40 border border-[#f9bf8f]/60 uppercase flex items-center justify-center">
+                Out of Stock
               </span>
             )}
           </div>
-          <p className="text-[10px] text-slate-500 font-medium">
-            (Excl. GST: ₹{priceExGst})
-          </p>
-
-          {/* Quantity and Add to Cart Row */}
-          <div className="mt-3 flex items-center space-x-2" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden bg-slate-50 shrink-0">
-              <button
-                type="button"
-                onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                className="w-7 h-8 flex items-center justify-center text-slate-600 hover:bg-slate-200 text-xs font-bold transition-colors cursor-pointer"
-              >
-                -
-              </button>
-              <input
-                type="number"
-                min="1"
-                max={product.stock}
-                value={quantity}
-                onChange={(e) => setQuantity(Math.max(1, Math.min(product.stock, parseInt(e.target.value) || 1)))}
-                className="w-8 h-8 text-center text-xs font-bold text-slate-800 bg-white border-x border-slate-200 outline-none"
-              />
-              <button
-                type="button"
-                onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
-                className="w-7 h-8 flex items-center justify-center text-slate-600 hover:bg-slate-200 text-xs font-bold transition-colors cursor-pointer"
-              >
-                +
-              </button>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleAdd}
-              disabled={product.stock <= 0}
-              className={`flex-1 h-8 rounded-lg flex items-center justify-center space-x-1.5 text-xs font-bold transition-all cursor-pointer ${
-                isAdded 
-                  ? 'bg-emerald-600 text-white' 
-                  : product.stock <= 0
-                  ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                  : 'bg-[#EF4F12] hover:bg-[#d44000] text-white shadow-xs'
-              }`}
-            >
-              {isAdded ? (
-                <>
-                  <Check className="w-3.5 h-3.5" />
-                  <span>Added!</span>
-                </>
-              ) : (
-                <>
-                  <ShoppingCart className="w-3.5 h-3.5" />
-                  <span>Add to Cart</span>
-                </>
-              )}
-            </button>
-          </div>
-
         </div>
 
       </div>
-    </div>
+    </article>
   );
 };

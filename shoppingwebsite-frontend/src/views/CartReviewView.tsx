@@ -90,7 +90,7 @@ export const CartReviewView: React.FC<CartReviewViewProps> = ({
             </p>
             <button
               onClick={onContinueShopping}
-              className="mt-4 inline-flex items-center px-6 py-3 bg-[#EF4F12] text-white text-xs font-bold rounded-xl hover:bg-[#d44000] transition cursor-pointer shadow-sm"
+              className="mt-4 inline-flex items-center px-6 py-3 bg-[#6366f1] text-white text-xs font-bold rounded-xl hover:bg-[#d44000] transition cursor-pointer shadow-sm"
             >
               Browse Products Catalog
             </button>
@@ -101,7 +101,7 @@ export const CartReviewView: React.FC<CartReviewViewProps> = ({
   }
 
   return (
-    <div className="min-h-screen bg-[#f8f9fc] py-8">
+    <div className="min-h-screen bg-[#fee9d7] text-[#34222e] py-8">
       <div className="max-w-7xl mx-auto px-4">
         
         {/* 3-Step Breadcrumb Stepper */}
@@ -109,31 +109,31 @@ export const CartReviewView: React.FC<CartReviewViewProps> = ({
           <div className="flex items-center justify-center max-w-xl mx-auto">
             
             {/* Step 1 */}
-            <div className="flex items-center space-x-2 text-[#EF4F12]">
-              <span className="w-7 h-7 rounded-full bg-[#EF4F12] text-white flex items-center justify-center text-xs font-bold">
+            <div className="flex items-center space-x-2 text-[#0c831f]">
+              <span className="w-7 h-7 rounded-full bg-[#0c831f] text-white flex items-center justify-center text-xs font-bold shadow-xs">
                 1
               </span>
               <span className="text-xs font-bold">Shopping Cart</span>
             </div>
 
-            <div className="flex-1 h-0.5 bg-slate-300 mx-3" />
+            <div className="flex-1 h-0.5 bg-[#f9bf8f]/60 mx-3" />
 
             {/* Step 2 */}
-            <div className="flex items-center space-x-2 text-slate-400">
-              <span className="w-7 h-7 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-xs font-bold">
+            <div className="flex items-center space-x-2 text-[#7a6274]">
+              <span className="w-7 h-7 rounded-full bg-white border border-[#f9bf8f] text-[#7a6274] flex items-center justify-center text-xs font-bold">
                 2
               </span>
               <span className="text-xs font-semibold">Shipping & GSTIN</span>
             </div>
 
-            <div className="flex-1 h-0.5 bg-slate-200 mx-3" />
+            <div className="flex-1 h-0.5 bg-[#f9bf8f]/60 mx-3" />
 
             {/* Step 3 */}
-            <div className="flex items-center space-x-2 text-slate-400">
-              <span className="w-7 h-7 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-xs font-bold">
+            <div className="flex items-center space-x-2 text-[#7a6274]">
+              <span className="w-7 h-7 rounded-full bg-white border border-[#f9bf8f] text-[#7a6274] flex items-center justify-center text-xs font-bold">
                 3
               </span>
-              <span className="text-xs font-semibold">Stripe Payment & Invoice</span>
+              <span className="text-xs font-semibold">Payment & Invoice</span>
             </div>
 
           </div>
@@ -260,7 +260,7 @@ export const CartReviewView: React.FC<CartReviewViewProps> = ({
                     onChange={(e) => onUpdateGstDetails({ ...gstDetails, enabled: e.target.checked })}
                     className="sr-only peer"
                   />
-                  <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#EF4F12]"></div>
+                  <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#6366f1]"></div>
                 </label>
               </div>
 
@@ -273,7 +273,7 @@ export const CartReviewView: React.FC<CartReviewViewProps> = ({
                       value={gstDetails.legalName}
                       onChange={(e) => onUpdateGstDetails({ ...gstDetails, legalName: e.target.value })}
                       placeholder="e.g. Apex Robotics Labs LLP"
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none font-semibold text-slate-800 focus:border-[#EF4F12]"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none font-semibold text-slate-800 focus:border-[#6366f1]"
                     />
                   </div>
 
@@ -292,7 +292,7 @@ export const CartReviewView: React.FC<CartReviewViewProps> = ({
                       value={gstDetails.gstin}
                       onChange={(e) => handleGstinChange(e.target.value)}
                       placeholder="e.g. 29AABCA9482Q1Z7"
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none font-mono font-bold text-slate-800 uppercase focus:border-[#EF4F12]"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none font-mono font-bold text-slate-800 uppercase focus:border-[#6366f1]"
                     />
                   </div>
 
@@ -322,7 +322,7 @@ export const CartReviewView: React.FC<CartReviewViewProps> = ({
                 </div>
                 <button
                   type="submit"
-                  className="bg-[#192737] hover:bg-slate-800 text-white text-xs font-bold px-4 py-2 rounded-lg transition cursor-pointer"
+                  className="bg-white hover:bg-slate-800 text-white text-xs font-bold px-4 py-2 rounded-lg transition cursor-pointer"
                 >
                   Apply
                 </button>
@@ -393,7 +393,7 @@ export const CartReviewView: React.FC<CartReviewViewProps> = ({
               {/* Checkout CTA */}
               <button
                 onClick={onProceedToCheckout}
-                className="w-full bg-[#EF4F12] hover:bg-[#d44000] text-white py-3.5 px-4 rounded-xl font-bold text-sm flex items-center justify-center space-x-2 transition-all shadow-md shadow-orange-500/20 cursor-pointer"
+                className="w-full bg-[#6366f1] hover:bg-[#d44000] text-white py-3.5 px-4 rounded-xl font-bold text-sm flex items-center justify-center space-x-2 transition-all shadow-md shadow-orange-500/20 cursor-pointer"
               >
                 <Lock className="w-4 h-4" />
                 <span>Proceed to Stripe Checkout</span>

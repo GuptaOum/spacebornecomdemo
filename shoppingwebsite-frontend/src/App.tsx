@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { ShoppingCart } from 'lucide-react';
 import { Product, CartItem, GstDetails, Order, UserProfile, AppView } from './types';
 import { PRODUCTS, INITIAL_ORDERS } from './data/products';
 import { Header } from './components/Header';
 import { CategoryNav } from './components/CategoryNav';
 import { QuickViewModal } from './components/QuickViewModal';
 import { CartDrawer } from './components/CartDrawer';
+import { StickyCartDock } from './components/StickyCartDock';
 import { Footer } from './components/Footer';
 
 // Views
@@ -21,6 +23,7 @@ import { AccountProfileView } from './views/AccountProfileView';
 import { AboutView } from './views/AboutView';
 import { ContactView } from './views/ContactView';
 import { B2BPortalView } from './views/B2BPortalView';
+import { VendorPortalView } from './views/VendorPortalView';
 import { FabricationLabView } from './views/FabricationLabView';
 import { DatasheetLibraryView } from './views/DatasheetLibraryView';
 import { WarrantyPolicyView } from './views/WarrantyPolicyView';
@@ -91,8 +94,42 @@ export default function App() {
   // Navigation & View State
   const [currentView, setCurrentView] = useState<AppView>('home');
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
-  const [selectedProduct, setSelectedProduct] = useState<Product>(PRODUCTS[0]);
-  const [catalogProducts, setCatalogProducts] = useState<Product[]>(PRODUCTS);
+  // Dynamic Catalog State with Vendor additions
+  const [products, setProducts] = useState<Product[]>(() => {
+    try {
+      const saved = localStorage.getItem('spaceborn_custom_products');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return [...parsed, ...PRODUCTS];
+      }
+    } catch (e) {
+      console.warn('Could not read custom products', e);
+    }
+    return PRODUCTS;
+  });
+
+  const handleAddProduct = (newProd: Product) => {
+    setProducts(prev => {
+      const next = [newProd, ...prev];
+      try {
+        const customOnly = next.filter(p => !PRODUCTS.some(init => init.id === p.id));
+        localStorage.setItem('spaceborn_custom_products', JSON.stringify(customOnly));
+      } catch (e) {
+        console.warn('Could not save custom product', e);
+      }
+      return next;
+    });
+  };
+
+  const handleUpdateProduct = (updated: Product) => {
+    setProducts(prev => prev.map(p => p.id === updated.id ? updated : p));
+  };
+
+  const handleDeleteProduct = (id: string) => {
+    setProducts(prev => prev.filter(p => p.id !== id));
+  };
+
+  const [selectedProduct, setSelectedProduct] = useState<Product>(products[0] || PRODUCTS[0]);
   const [selectedCategory, setSelectedCategory] = useState<string>('All Categories');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
@@ -104,7 +141,9 @@ export default function App() {
   const refreshCatalog = async () => {
     try {
       const result = await apiRequest<{ products: BackendCatalogProduct[] }>('/products?limit=100&sortBy=newest');
-      setCatalogProducts(result.products.map(toStorefrontProduct));
+      if (result.products?.length) {
+        setProducts(result.products.map(toStorefrontProduct));
+      }
     } catch (error) {
       console.warn('Using bundled catalog because the product API is unavailable:', error);
     }
@@ -435,7 +474,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#f8f9fc] text-slate-800 font-sans antialiased selection:bg-[#EF4F12] selection:text-white">
+    <div className="min-h-screen flex flex-col bg-[#fee9d7] text-[#34222e] font-sans antialiased selection:bg-[#e2434b] selection:text-white">
       
       {/* Top Header */}
       <Header
@@ -452,22 +491,17 @@ export default function App() {
         onSearchChange={setSearchQuery}
         selectedCategory={selectedCategory}
         onSelectCategory={handleSelectCategory}
-        products={catalogProducts}
+        products={products}
         onSelectProduct={handleSelectProduct}
       />
 
-      {/* Category Navigation Bar */}
-      <CategoryNav
-        onNavigate={handleNavigate}
-        selectedCategory={selectedCategory}
-        onSelectCategory={handleSelectCategory}
-      />
+
 
       {/* Main View Router */}
       <main className="flex-1">
         {currentView === 'home' && (
           <HomeView
-            products={catalogProducts}
+            products={products}
             onSelectProduct={handleSelectProduct}
             onAddToCart={handleAddToCart}
             onQuickView={(p) => setQuickViewProduct(p)}
@@ -476,12 +510,13 @@ export default function App() {
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
             onSelectCategory={handleSelectCategory}
+            cart={cart}
           />
         )}
 
         {currentView === 'catalog' && (
           <CatalogView
-            products={catalogProducts}
+            products={products}
             onSelectProduct={handleSelectProduct}
             onAddToCart={handleAddToCart}
             onQuickView={(p) => setQuickViewProduct(p)}
@@ -494,7 +529,7 @@ export default function App() {
         {currentView === 'product' && selectedProduct && (
           <ProductDetailView
             product={selectedProduct}
-            allProducts={catalogProducts}
+            allProducts={products}
             onAddToCart={handleAddToCart}
             onBuyNow={handleBuyNow}
             onSelectProduct={handleSelectProduct}
@@ -585,6 +620,18 @@ export default function App() {
           />
         )}
 
+        {currentView === 'vendor' && (
+          <VendorPortalView
+            products={products}
+            onAddProduct={handleAddProduct}
+            onUpdateProduct={handleUpdateProduct}
+            onDeleteProduct={handleDeleteProduct}
+            onSelectProduct={handleSelectProduct}
+            onNavigate={handleNavigate}
+            user={currentUser}
+          />
+        )}
+
         {currentView === 'fabrication' && (
           <FabricationLabView
             onNavigate={handleNavigate}
@@ -594,7 +641,7 @@ export default function App() {
 
         {currentView === 'datasheets' && (
           <DatasheetLibraryView
-            products={catalogProducts}
+            products={products}
             onSelectProduct={handleSelectProduct}
             onNavigate={handleNavigate}
           />
@@ -682,6 +729,14 @@ export default function App() {
         onSelectCategory={handleSelectCategory}
       />
 
+      {/* Quick Commerce Sticky Cart Dock with Free Delivery Progress */}
+      {!isCartDrawerOpen && (
+        <StickyCartDock
+          cart={cart}
+          onOpenCart={() => setIsCartDrawerOpen(true)}
+          currentView={currentView}
+        />
+      )}
     </div>
   );
 }

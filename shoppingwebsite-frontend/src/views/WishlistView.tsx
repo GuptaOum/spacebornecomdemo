@@ -49,7 +49,7 @@ export const WishlistView: React.FC<WishlistViewProps> = ({
                 wishlist.forEach(p => onAddToCart(p, 1));
                 onNavigate('cart');
               }}
-              className="bg-[#EF4F12] hover:bg-[#d44000] text-white px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center space-x-2 shadow-sm shadow-orange-500/20 cursor-pointer"
+              className="bg-[#6366f1] hover:bg-[#d44000] text-white px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center space-x-2 shadow-sm shadow-orange-500/20 cursor-pointer"
             >
               <ShoppingCart className="w-4 h-4" />
               <span>Add All to Cart</span>
@@ -70,7 +70,7 @@ export const WishlistView: React.FC<WishlistViewProps> = ({
             <div className="pt-2">
               <button
                 onClick={() => onNavigate('catalog')}
-                className="bg-[#EF4F12] hover:bg-[#d44000] text-white px-6 py-2.5 rounded-lg text-xs font-bold transition cursor-pointer"
+                className="bg-[#6366f1] hover:bg-[#d44000] text-white px-6 py-2.5 rounded-lg text-xs font-bold transition cursor-pointer"
               >
                 Browse Spaceborn Catalog
               </button>
@@ -108,7 +108,7 @@ export const WishlistView: React.FC<WishlistViewProps> = ({
                       className="w-16 h-16 object-contain rounded-xl border border-slate-100 bg-slate-50 p-1.5 shrink-0 group-hover:scale-105 transition"
                     />
                     <div>
-                      <h4 className="font-bold text-slate-900 text-xs sm:text-sm line-clamp-2 group-hover:text-[#EF4F12] transition">
+                      <h4 className="font-bold text-slate-900 text-xs sm:text-sm line-clamp-2 group-hover:text-[#6366f1] transition">
                         {product.name}
                       </h4>
                       <span className="text-[11px] text-slate-500">{product.brand}</span>
@@ -133,7 +133,7 @@ export const WishlistView: React.FC<WishlistViewProps> = ({
                     onClick={() => {
                       onAddToCart(product, 1);
                     }}
-                    className="flex-1 bg-[#EF4F12] hover:bg-[#d44000] text-white py-2 rounded-xl text-xs font-bold flex items-center justify-center space-x-1.5 transition cursor-pointer"
+                    className="flex-1 bg-[#6366f1] hover:bg-[#d44000] text-white py-2 rounded-xl text-xs font-bold flex items-center justify-center space-x-1.5 transition cursor-pointer"
                   >
                     <ShoppingCart className="w-3.5 h-3.5" />
                     <span>Add to Cart</span>

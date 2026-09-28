@@ -44,7 +44,7 @@ export const DatasheetLibraryView: React.FC<DatasheetLibraryViewProps> = ({
       <div className="max-w-7xl mx-auto space-y-8">
         
         {/* Header */}
-        <div className="bg-[#192737] rounded-2xl p-8 md:p-10 text-white border border-slate-800 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="bg-white rounded-2xl p-8 md:p-10 text-white border border-slate-800 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="max-w-2xl space-y-3">
             <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/30 text-orange-400 text-xs font-bold uppercase">
               <FileText className="w-3.5 h-3.5" />
@@ -74,7 +74,7 @@ export const DatasheetLibraryView: React.FC<DatasheetLibraryViewProps> = ({
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Filter by MPN, SKU, or Keyword (e.g. N20, TB6600, ESP32, LiDAR)..."
-              className="w-full pl-9 pr-4 py-2 text-xs rounded-lg border border-slate-200 outline-none focus:border-[#EF4F12] transition"
+              className="w-full pl-9 pr-4 py-2 text-xs rounded-lg border border-slate-200 outline-none focus:border-[#6366f1] transition"
             />
           </div>
 
@@ -83,7 +83,7 @@ export const DatasheetLibraryView: React.FC<DatasheetLibraryViewProps> = ({
             <select
               value={selectedCategory}
               onChange={e => setSelectedCategory(e.target.value)}
-              className="px-3 py-2 text-xs rounded-lg border border-slate-200 bg-white outline-none focus:border-[#EF4F12] cursor-pointer"
+              className="px-3 py-2 text-xs rounded-lg border border-slate-200 bg-white outline-none focus:border-[#6366f1] cursor-pointer"
             >
               <option value="All">All Categories</option>
               <option value="Motors & Drivers">Motors & Drivers</option>
@@ -157,7 +157,7 @@ export const DatasheetLibraryView: React.FC<DatasheetLibraryViewProps> = ({
                         alert(`Opening official technical datasheet for ${product.sku}`);
                       }
                     }}
-                    className="w-full bg-orange-50 hover:bg-orange-100 text-[#EF4F12] border border-orange-200 py-1.5 px-2 rounded-lg text-xs font-semibold flex items-center justify-center space-x-1 transition cursor-pointer"
+                    className="w-full bg-orange-50 hover:bg-orange-100 text-[#6366f1] border border-orange-200 py-1.5 px-2 rounded-lg text-xs font-semibold flex items-center justify-center space-x-1 transition cursor-pointer"
                   >
                     <Download className="w-3.5 h-3.5" />
                     <span>PDF Sheet</span>
@@ -170,7 +170,7 @@ export const DatasheetLibraryView: React.FC<DatasheetLibraryViewProps> = ({
                       onSelectProduct(product);
                       onNavigate('product');
                     }}
-                    className="text-slate-500 hover:text-[#EF4F12] transition flex items-center space-x-1 cursor-pointer"
+                    className="text-slate-500 hover:text-[#6366f1] transition flex items-center space-x-1 cursor-pointer"
                   >
                     <span>View in Store (₹{product.price})</span>
                     <ChevronRight className="w-3.5 h-3.5" />
@@ -189,7 +189,7 @@ export const DatasheetLibraryView: React.FC<DatasheetLibraryViewProps> = ({
             <div className="bg-white rounded-2xl max-w-2xl w-full p-6 space-y-5 border border-slate-200 shadow-2xl max-h-[90vh] overflow-y-auto">
               <div className="flex items-start justify-between border-b border-slate-100 pb-3">
                 <div className="space-y-0.5">
-                  <span className="text-[11px] font-mono text-[#EF4F12] font-bold">{activeModalProduct.sku}</span>
+                  <span className="text-[11px] font-mono text-[#6366f1] font-bold">{activeModalProduct.sku}</span>
                   <h3 className="font-bold text-slate-900 text-base">{activeModalProduct.name}</h3>
                 </div>
                 <button onClick={() => setActiveModalProduct(null)} className="text-slate-400 hover:text-slate-600 font-bold p-1 cursor-pointer">✕</button>
@@ -199,19 +199,19 @@ export const DatasheetLibraryView: React.FC<DatasheetLibraryViewProps> = ({
               <div className="flex space-x-2 border-b border-slate-200 text-xs font-semibold">
                 <button 
                   onClick={() => setActiveTab('specs')}
-                  className={`py-2 px-3 border-b-2 transition cursor-pointer ${activeTab === 'specs' ? 'border-[#EF4F12] text-[#EF4F12]' : 'border-transparent text-slate-500'}`}
+                  className={`py-2 px-3 border-b-2 transition cursor-pointer ${activeTab === 'specs' ? 'border-[#6366f1] text-[#6366f1]' : 'border-transparent text-slate-500'}`}
                 >
                   Electrical Specs
                 </button>
                 <button 
                   onClick={() => setActiveTab('pinout')}
-                  className={`py-2 px-3 border-b-2 transition cursor-pointer ${activeTab === 'pinout' ? 'border-[#EF4F12] text-[#EF4F12]' : 'border-transparent text-slate-500'}`}
+                  className={`py-2 px-3 border-b-2 transition cursor-pointer ${activeTab === 'pinout' ? 'border-[#6366f1] text-[#6366f1]' : 'border-transparent text-slate-500'}`}
                 >
                   Pinout & Wiring Diagram
                 </button>
                 <button 
                   onClick={() => setActiveTab('code')}
-                  className={`py-2 px-3 border-b-2 transition cursor-pointer ${activeTab === 'code' ? 'border-[#EF4F12] text-[#EF4F12]' : 'border-transparent text-slate-500'}`}
+                  className={`py-2 px-3 border-b-2 transition cursor-pointer ${activeTab === 'code' ? 'border-[#6366f1] text-[#6366f1]' : 'border-transparent text-slate-500'}`}
                 >
                   Driver Code Snippet
                 </button>
@@ -292,7 +292,7 @@ void loop() {
                     setActiveModalProduct(null);
                     onNavigate('product');
                   }}
-                  className="bg-[#EF4F12] hover:bg-[#d44000] text-white px-5 py-2 rounded-lg text-xs font-bold transition cursor-pointer"
+                  className="bg-[#6366f1] hover:bg-[#d44000] text-white px-5 py-2 rounded-lg text-xs font-bold transition cursor-pointer"
                 >
                   View Product Page
                 </button>
