@@ -21,7 +21,7 @@ export const StickyCartDock: React.FC<StickyCartDockProps> = ({
   const freeDeliveryThreshold = 500;
   const remainingForFree = Math.max(0, freeDeliveryThreshold - subtotal);
 
-  if (totalItems === 0 || currentView === 'cart' || currentView === 'checkout' || currentView.startsWith('product')) {
+  if (totalItems === 0 || currentView === 'cart' || currentView === 'checkout' || currentView.startsWith('product') || currentView.startsWith('orders')) {
     return null;
   }
 
