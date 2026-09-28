@@ -1,3 +1,4 @@
+﻿'use client';
 import React, { useState } from 'react';
 import { Product } from '../types';
 import { X, Star, ShoppingCart, Check, ShieldCheck, ArrowRight, Zap, ZoomIn } from 'lucide-react';
@@ -111,7 +112,7 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
             <div>
               <div className="flex items-center space-x-2 text-xs font-semibold text-[#7a6274] mb-1">
                 <span className="text-[#e2434b] font-bold uppercase tracking-wider">{product.category}</span>
-                <span>•</span>
+                <span>â€¢</span>
                 <span>{product.brand}</span>
               </div>
 

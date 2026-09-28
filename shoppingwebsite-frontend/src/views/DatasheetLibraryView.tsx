@@ -1,3 +1,4 @@
+﻿'use client';
 import React, { useState } from 'react';
 import { 
   FileText, 
@@ -192,7 +193,7 @@ export const DatasheetLibraryView: React.FC<DatasheetLibraryViewProps> = ({
                   <span className="text-[11px] font-mono text-[#6366f1] font-bold">{activeModalProduct.sku}</span>
                   <h3 className="font-bold text-slate-900 text-base">{activeModalProduct.name}</h3>
                 </div>
-                <button onClick={() => setActiveModalProduct(null)} className="text-slate-400 hover:text-slate-600 font-bold p-1 cursor-pointer">✕</button>
+                <button onClick={() => setActiveModalProduct(null)} className="text-slate-400 hover:text-slate-600 font-bold p-1 cursor-pointer">âœ•</button>
               </div>
 
               {/* Tabs */}

@@ -1,3 +1,4 @@
+﻿'use client';
 import React, { useState } from 'react';
 import { 
   Building2, 
@@ -150,10 +151,10 @@ SEN-TF-LUNA-LIDAR, 5`
               <span>Institutional Volume Discount Tiers</span>
             </div>
             <div className="space-y-1 text-slate-300">
-              <p>• 10+ Units: <strong>5% Instant Off</strong></p>
-              <p>• 25+ Units: <strong>10% Instant Off</strong></p>
-              <p>• 50+ Units: <strong>15% Instant Off</strong></p>
-              <p>• 100+ Units: <strong>Contract PO Pricing</strong></p>
+              <p>â€¢ 10+ Units: <strong>5% Instant Off</strong></p>
+              <p>â€¢ 25+ Units: <strong>10% Instant Off</strong></p>
+              <p>â€¢ 50+ Units: <strong>15% Instant Off</strong></p>
+              <p>â€¢ 100+ Units: <strong>Contract PO Pricing</strong></p>
             </div>
           </div>
         </div>
@@ -304,7 +305,7 @@ SEN-TF-LUNA-LIDAR, 5`
             <div className="bg-white rounded-2xl max-w-lg w-full p-6 space-y-5 border border-slate-200 shadow-2xl">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <h3 className="font-bold text-slate-900 text-base">Spaceborn Official Proforma RFQ</h3>
-                <button onClick={() => setShowRfqModal(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer font-bold">✕</button>
+                <button onClick={() => setShowRfqModal(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer font-bold">âœ•</button>
               </div>
 
               <div className="space-y-3 text-xs text-slate-700">

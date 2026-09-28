@@ -1,3 +1,4 @@
+﻿'use client';
 import React, { useState, useMemo } from 'react';
 import { Product } from '../types';
 import { ProductCard } from '../components/ProductCard';
@@ -212,7 +213,7 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <div className="flex items-center space-x-2 text-xs font-bold text-[#0c831f] mb-1">
-                <span>⚡ 10-15 Min Delivery</span>
+                <span>âš¡ 10-15 Min Delivery</span>
               </div>
               <h1 className="text-xl sm:text-2xl font-bold text-[#34222e]">
                 {selectedCategory === 'All Categories' ? 'All Products' : selectedCategory}
@@ -539,7 +540,7 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
                       <div>
                         <div className="flex items-center space-x-2 text-[10px] text-[#7a6274] mb-0.5">
                           <span className="font-semibold text-[#e2434b]">{product.brand}</span>
-                          <span>•</span>
+                          <span>â€¢</span>
                           <span>SKU: {product.sku}</span>
                         </div>
                         <h3 className="text-xs sm:text-sm font-bold text-[#34222e] leading-snug">
@@ -556,7 +557,7 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
                           </div>
                           <span className="text-[11px] font-bold text-[#34222e]">{product.rating}</span>
                           <span className="text-[10px] text-[#0c831f] font-semibold bg-[#f2fcf4] px-1.5 py-0.5 rounded border border-[#0c831f]/20">
-                            ⚡ {product.deliveryMins || 10} Mins
+                            âš¡ {product.deliveryMins || 10} Mins
                           </span>
                         </div>
                       </div>

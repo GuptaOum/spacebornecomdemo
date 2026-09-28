@@ -1,10 +1,20 @@
+'use client';
+
 import React from 'react';
 import { Product, AppView } from '../types';
 import { ProductCard } from '../components/ProductCard';
 import { 
   ArrowRight, 
   ChevronRight,
-  Zap
+  Zap,
+  Cog,
+  Cpu,
+  Radio,
+  BatteryCharging,
+  Wrench,
+  Bot,
+  Cable,
+  Package
 } from 'lucide-react';
 
 interface HomeViewProps {
@@ -17,16 +27,16 @@ interface HomeViewProps {
   cart: { product: Product; quantity: number }[];
 }
 
-// Clean Blinkit-style category aisles
+// Clean Blinkit-style category aisles with crisp Lucide icons
 const QUICK_CATEGORIES = [
-  { name: 'Motors & Drivers', icon: '⚙️', category: 'Motors & Drivers', bg: '#FEF3C7' },
-  { name: 'Dev Boards', icon: '💻', category: 'Development Boards', bg: '#E0F2FE' },
-  { name: 'Sensors & Modules', icon: '📡', category: 'Sensors & Modules', bg: '#ECFDF5' },
-  { name: 'Batteries & Power', icon: '🔋', category: 'Batteries & Chargers', bg: '#FEE2E2' },
-  { name: 'Tools & Soldering', icon: '🛠️', category: 'Tools & Soldering', bg: '#EDE9FE' },
-  { name: 'Robotics & Drone', icon: '🤖', category: 'Robotics & Mechanical', bg: '#FFEDD5' },
-  { name: 'Cables & Passives', icon: '🔌', category: 'Components', bg: '#CCFBF1' },
-  { name: 'DIY Maker Kits', icon: '📦', category: 'DIY Kits', bg: '#FCE7F3' },
+  { name: 'Motors & Drivers', icon: Cog, color: '#b45309', category: 'Motors & Drivers', bg: '#FEF3C7' },
+  { name: 'Dev Boards', icon: Cpu, color: '#0369a1', category: 'Development Boards', bg: '#E0F2FE' },
+  { name: 'Sensors & Modules', icon: Radio, color: '#047857', category: 'Sensors & Modules', bg: '#ECFDF5' },
+  { name: 'Batteries & Power', icon: BatteryCharging, color: '#b91c1c', category: 'Batteries & Chargers', bg: '#FEE2E2' },
+  { name: 'Tools & Soldering', icon: Wrench, color: '#6d28d9', category: 'Tools & Soldering', bg: '#EDE9FE' },
+  { name: 'Robotics & Drone', icon: Bot, color: '#c2410c', category: 'Robotics & Mechanical', bg: '#FFEDD5' },
+  { name: 'Cables & Passives', icon: Cable, color: '#0f766e', category: 'Components & Hardware', bg: '#CCFBF1' },
+  { name: 'DIY Maker Kits', icon: Package, color: '#be185d', category: 'DIY Kits', bg: '#FCE7F3' },
 ];
 
 export const HomeView: React.FC<HomeViewProps> = ({
@@ -89,26 +99,29 @@ export const HomeView: React.FC<HomeViewProps> = ({
           </div>
 
           <div className="grid grid-cols-4 sm:grid-cols-8 gap-3">
-            {QUICK_CATEGORIES.map((cat, index) => (
-              <div
-                key={index}
-                onClick={() => {
-                  onSelectCategory(cat.category);
-                  onNavigate('catalog');
-                }}
-                className="group flex flex-col items-center text-center p-2 rounded-2xl hover:bg-[#fee9d7]/40 border border-transparent hover:border-[#f9bf8f]/50 transition-all cursor-pointer"
-              >
-                <div 
-                  style={{ backgroundColor: cat.bg }}
-                  className="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl border border-black/5 flex items-center justify-center text-2xl group-hover:scale-105 transition-all shadow-xs mb-2"
+            {QUICK_CATEGORIES.map((cat, index) => {
+              const Icon = cat.icon;
+              return (
+                <div
+                  key={index}
+                  onClick={() => {
+                    onSelectCategory(cat.category);
+                    onNavigate('catalog');
+                  }}
+                  className="group flex flex-col items-center text-center p-2 rounded-2xl hover:bg-[#fee9d7]/40 border border-transparent hover:border-[#f9bf8f]/50 transition-all cursor-pointer"
                 >
-                  <span>{cat.icon}</span>
+                  <div 
+                    style={{ backgroundColor: cat.bg }}
+                    className="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl border border-black/5 flex items-center justify-center group-hover:scale-105 transition-all shadow-xs mb-2"
+                  >
+                    <Icon className="w-6 h-6" style={{ color: cat.color }} />
+                  </div>
+                  <span className="text-xs font-medium text-[#34222e] leading-tight group-hover:text-[#e2434b] transition-colors line-clamp-1">
+                    {cat.name}
+                  </span>
                 </div>
-                <span className="text-xs font-medium text-[#34222e] leading-tight group-hover:text-[#e2434b] transition-colors line-clamp-1">
-                  {cat.name}
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </section>
 

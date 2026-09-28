@@ -1,3 +1,4 @@
+﻿'use client';
 import React from 'react';
 import { AppView } from '../types';
 import { CATEGORIES } from '../data/products';

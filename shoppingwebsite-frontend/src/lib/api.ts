@@ -1,6 +1,6 @@
 import { Order, UserProfile } from '../types';
 
-const API_PREFIX = import.meta.env.VITE_API_BASE_URL || '/api';
+const API_PREFIX = (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_API_BASE_URL) || '/api';
 const TOKEN_KEY = 'spaceborn_access_token';
 
 interface ApiEnvelope<T> {

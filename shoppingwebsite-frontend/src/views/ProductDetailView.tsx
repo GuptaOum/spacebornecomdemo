@@ -1,3 +1,4 @@
+﻿'use client';
 import React, { useState } from 'react';
 import { Product, AppView } from '../types';
 import { ProductCard } from '../components/ProductCard';
@@ -40,7 +41,7 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState<'specs' | 'pinout' | 'package' | 'reviews'>('specs');
   const [pincode, setPincode] = useState('208001');
-  const [pincodeStatus, setPincodeStatus] = useState<string | null>('⚡ 10-15 Min Express Delivery available to Kanpur Hub & Labs.');
+  const [pincodeStatus, setPincodeStatus] = useState<string | null>('âš¡ 10-15 Min Express Delivery available to Kanpur Hub & Labs.');
   const [addedSuccess, setAddedSuccess] = useState(false);
   const [isZoomed, setIsZoomed] = useState(false);
   const [zoomPos, setZoomPos] = useState({ x: 50, y: 50 });
@@ -140,7 +141,7 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
                 {/* Stock & Speed Badges */}
                 <div className={`absolute top-3 left-3 flex flex-col gap-1.5 transition-opacity ${isZoomed ? 'opacity-0' : 'opacity-100'}`}>
                   <span className="bg-[#f2fcf4] text-[#0c831f] text-[10px] font-bold px-2 py-0.5 rounded-lg border border-[#0c831f]/20 uppercase">
-                    ⚡ {product.deliveryMins || 10} Mins Delivery
+                    âš¡ {product.deliveryMins || 10} Mins Delivery
                   </span>
                   <span className="bg-white/90 text-[#34222e] text-[10px] font-bold px-2 py-0.5 rounded-lg border border-[#f9bf8f]/60 uppercase">
                     In Stock ({product.stock} units)
@@ -202,7 +203,7 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
                 <div className="flex flex-wrap items-center justify-between text-xs text-[#7a6274] mb-2 gap-2">
                   <div className="flex items-center space-x-2">
                     <span className="font-bold text-[#e2434b] uppercase tracking-wider">{product.brand}</span>
-                    <span>•</span>
+                    <span>â€¢</span>
                     <span>SKU: <strong className="text-[#34222e]">{product.sku}</strong></span>
                   </div>
                   <span className="bg-white border border-[#f9bf8f]/60 px-2 py-0.5 rounded text-[11px] font-semibold text-[#34222e]">
@@ -227,7 +228,7 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
                   </div>
                   <span className="font-bold text-[#34222e]">{product.rating}</span>
                   <span className="text-[#7a6274]">({product.reviewsCount} reviews)</span>
-                  <span className="text-[#7a6274]/50">•</span>
+                  <span className="text-[#7a6274]/50">â€¢</span>
                   <span className="text-[#0c831f] font-semibold flex items-center space-x-1">
                     <ShieldCheck className="w-3.5 h-3.5" />
                     <span>100% Genuine Certified</span>
@@ -488,7 +489,7 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
                 <div>
                   <span className="font-bold block">Interface & Signal Logic</span>
                   <span className="text-[#7a6274]">
-                    Connect VCC to 5V DC and GND to system ground. Trigger requires a 10µs TTL pulse to transmit sonar ping.
+                    Connect VCC to 5V DC and GND to system ground. Trigger requires a 10Âµs TTL pulse to transmit sonar ping.
                   </span>
                 </div>
               </div>

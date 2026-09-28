@@ -1,3 +1,4 @@
+﻿'use client';
 import React from 'react';
 import { 
   Rocket, 
@@ -41,7 +42,7 @@ export const AboutView: React.FC<AboutViewProps> = ({ onNavigate }) => {
             </div>
 
             <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-white leading-tight">
-              Fueling India’s Aerospace, Deep Tech & Robotics Revolution.
+              Fueling Indiaâ€™s Aerospace, Deep Tech & Robotics Revolution.
             </h1>
 
             <p className="text-slate-300 text-sm sm:text-base leading-relaxed">
@@ -104,7 +105,7 @@ export const AboutView: React.FC<AboutViewProps> = ({ onNavigate }) => {
           <div className="max-w-2xl mb-8">
             <h2 className="text-2xl font-bold text-slate-900">World-Class Hardware Infrastructure</h2>
             <p className="text-slate-500 text-sm mt-1">
-              Strategically operating fulfillment centers and technical prototyping labs at India’s premier aerospace and electronics corridors.
+              Strategically operating fulfillment centers and technical prototyping labs at Indiaâ€™s premier aerospace and electronics corridors.
             </p>
           </div>
 
