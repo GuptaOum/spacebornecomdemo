@@ -17,10 +17,12 @@ variable "firebase_api_key" {
 variable "ecr_image_uri" {
   type        = string
   description = "The URI of the Docker image in ECR"
+  default     = "placeholder-uri"
 }
 
 variable "ecr_celery_image_uri" {
   type        = string
   description = "The URI of the Celery Docker image in ECR"
+  default     = "placeholder-uri"
 }
 
