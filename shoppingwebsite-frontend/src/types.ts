@@ -1,5 +1,8 @@
 export interface Product {
   id: string;
+  vendorId?: string; // Multi-vendor extension
+  vendorName?: string;
+  city?: string;     // E.g. 'Kanpur', 'Bangalore', 'Pune', 'Chennai', 'Gurugram'
   name: string;
   sku: string;
   category: string;
@@ -85,9 +88,19 @@ export interface Address {
   type: 'business' | 'residential';
 }
 
+export interface VendorStore {
+  id: string;
+  userId: string;
+  storeName: string;
+  city: string;
+  status: 'pending' | 'approved' | 'rejected';
+  joinedDate: string;
+  gstin?: string;
+}
+
 export interface UserProfile {
   id: string;
-  role?: 'customer' | 'admin';
+  role?: 'customer' | 'vendor' | 'admin';
   fullName: string;
   email: string;
   phone: string;

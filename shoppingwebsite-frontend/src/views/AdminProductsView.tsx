@@ -1,245 +1,166 @@
 'use client';
-import React, { useEffect, useState } from 'react';
-import { AlertCircle, Boxes, CheckCircle2, ImagePlus, Loader2, Pencil, Plus, RefreshCw, Save, X } from 'lucide-react';
-import { apiRequest } from '../lib/api';
+import React, { useState } from 'react';
+import { Shield, Users, Package, Store, CheckCircle, XCircle } from 'lucide-react';
 import { AppView } from '../types';
-
-type CatalogProduct = {
-  _id: string;
-  name: string;
-  slug: string;
-  description: string;
-  price: number;
-  stock: number;
-  category: string;
-  sku: string;
-  images: string[];
-  isAvailable: boolean;
-};
-
-type ProductForm = {
-  name: string;
-  sku: string;
-  category: string;
-  description: string;
-  price: string;
-  stock: string;
-  imageUrl: string;
-  isAvailable: boolean;
-};
-
-const emptyForm: ProductForm = {
-  name: '', sku: '', category: 'Motors', description: '', price: '', stock: '', imageUrl: '', isAvailable: true,
-};
-
-const categories = ['Motors', 'Sensors', 'Controllers', 'Batteries', 'Structural', 'Accessories'];
+import { useAuth } from '../context/AuthContext';
 
 interface AdminProductsViewProps {
   onNavigate: (view: AppView) => void;
   onCatalogChanged: () => Promise<void>;
 }
 
-export const AdminProductsView: React.FC<AdminProductsViewProps> = ({ onNavigate, onCatalogChanged }) => {
-  const [products, setProducts] = useState<CatalogProduct[]>([]);
-  const [form, setForm] = useState<ProductForm>(emptyForm);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
+export function AdminProductsView({ onNavigate }: AdminProductsViewProps) {
+  const { user, vendorStore, setVendorStatus } = useAuth();
+  const [activeTab, setActiveTab] = useState<'vendors' | 'products'>('vendors');
 
-  const loadProducts = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await apiRequest<{ products: CatalogProduct[] }>('/products/manage');
-      setProducts(result.products);
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Could not load products.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => { void loadProducts(); }, []);
-
-  const startEdit = (product: CatalogProduct) => {
-    setEditingId(product._id);
-    setForm({
-      name: product.name,
-      sku: product.sku,
-      category: product.category,
-      description: product.description,
-      price: String(product.price),
-      stock: String(product.stock),
-      imageUrl: product.images?.[0] || '',
-      isAvailable: product.isAvailable,
-    });
-    setMessage(null);
-    setError(null);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const resetForm = () => {
-    setEditingId(null);
-    setForm(emptyForm);
-    setError(null);
-    setMessage(null);
-  };
-
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    setSaving(true);
-    setError(null);
-    setMessage(null);
-    const slug = form.name.trim().toLowerCase()
-      .normalize('NFKD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '');
-    const payload = {
-      name: form.name.trim(),
-      slug,
-      sku: form.sku.trim().toUpperCase(),
-      category: form.category,
-      description: form.description.trim(),
-      price: Number(form.price),
-      stock: Number(form.stock),
-      images: form.imageUrl.trim() ? [form.imageUrl.trim()] : [],
-      specs: {},
-      isAvailable: form.isAvailable,
-    };
-
-    try {
-      await apiRequest<CatalogProduct>(editingId ? `/products/${editingId}` : '/products', {
-        method: editingId ? 'PATCH' : 'POST',
-        body: JSON.stringify(payload),
-      });
-      setMessage(editingId ? 'Product updated.' : 'Product added to the catalog.');
-      resetForm();
-      setMessage(editingId ? 'Product updated.' : 'Product added to the catalog.');
-      await Promise.all([loadProducts(), onCatalogChanged()]);
-    } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : 'Could not save this product.');
-    } finally {
-      setSaving(false);
-    }
-  };
+  if (!user || user.role !== 'admin') {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center bg-[#fffbf7]">
+        <Shield className="w-16 h-16 text-[#e2434b] mb-4" />
+        <h2 className="text-xl font-bold text-[#34222e]">Admin Access Required</h2>
+        <p className="text-sm text-[#7a6274] mt-2 mb-6 text-center max-w-md">
+          Please sign in with a verified admin account to access the control panel.
+        </p>
+        <button 
+          onClick={() => onNavigate('auth')}
+          className="px-6 py-2.5 bg-[#34222e] text-white rounded-xl font-bold text-sm hover:bg-[#1f141b] transition shadow-md"
+        >
+          Sign In as Admin
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-slate-50 px-4 py-8 sm:py-10">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <header className="flex flex-col gap-4 rounded-2xl bg-[#192737] p-6 text-white shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-8">
+    <div className="min-h-screen bg-[#fee9d7] py-8">
+      <div className="max-w-7xl mx-auto px-4">
+        
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-orange-300">Store administration</p>
-            <h1 className="mt-2 text-2xl font-black sm:text-3xl">Product management</h1>
-            <p className="mt-1 text-sm text-slate-300">Add products and keep prices and stock current.</p>
+            <h1 className="text-2xl font-black text-[#34222e] flex items-center gap-2">
+              <Shield className="w-6 h-6 text-[#e2434b]" />
+              Super Admin Console
+            </h1>
+            <p className="text-[#7a6274] text-sm mt-1">Manage marketplace vendors, products, and platform settings.</p>
           </div>
-          <button onClick={() => onNavigate('catalog')} className="rounded-lg border border-white/20 px-4 py-2 text-sm font-semibold hover:bg-white/10">
-            View storefront
-          </button>
-        </header>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setActiveTab('vendors')}
+              className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+                activeTab === 'vendors' ? 'bg-[#34222e] text-white shadow-md' : 'bg-white text-[#7a6274] border border-[#f9bf8f] hover:bg-[#fffbf7]'
+              }`}
+            >
+              Vendors
+            </button>
+            <button
+              onClick={() => setActiveTab('products')}
+              className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+                activeTab === 'products' ? 'bg-[#34222e] text-white shadow-md' : 'bg-white text-[#7a6274] border border-[#f9bf8f] hover:bg-[#fffbf7]'
+              }`}
+            >
+              Products
+            </button>
+          </div>
+        </div>
 
-        {(error || message) && (
-          <div role={error ? 'alert' : 'status'} className={`flex items-start gap-2 rounded-xl border p-3 text-sm ${error ? 'border-red-200 bg-red-50 text-red-700' : 'border-emerald-200 bg-emerald-50 text-emerald-800'}`}>
-            {error ? <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /> : <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />}
-            <span>{error || message}</span>
+        {/* Vendors Tab */}
+        {activeTab === 'vendors' && (
+          <div className="bg-[#fffbf7] rounded-3xl p-6 border border-[#f9bf8f]/60 shadow-sm">
+            <h2 className="text-lg font-bold text-[#34222e] mb-4 flex items-center gap-2">
+              <Store className="w-5 h-5" /> Pending Vendor Approvals
+            </h2>
+            
+            {vendorStore && vendorStore.status === 'pending' ? (
+              <div className="border border-[#f9bf8f]/40 rounded-2xl p-4 bg-white flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-bold text-[#34222e] text-base">{vendorStore.storeName}</span>
+                    <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-600 text-[10px] font-bold border border-amber-200">
+                      PENDING REVIEW
+                    </span>
+                  </div>
+                  <p className="text-xs text-[#7a6274]">Location: {vendorStore.city} • Applied: {new Date(vendorStore.joinedDate).toLocaleDateString()}</p>
+                </div>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => setVendorStatus('approved')}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0c831f] text-white rounded-lg text-xs font-bold hover:bg-[#096618] transition"
+                  >
+                    <CheckCircle className="w-3.5 h-3.5" /> Approve
+                  </button>
+                  <button 
+                    onClick={() => setVendorStatus('rejected')}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-red-200 text-red-600 rounded-lg text-xs font-bold hover:bg-red-50 transition"
+                  >
+                    <XCircle className="w-3.5 h-3.5" /> Reject
+                  </button>
+                </div>
+              </div>
+            ) : vendorStore && vendorStore.status === 'approved' ? (
+              <div className="text-center py-10">
+                <p className="text-[#7a6274] text-sm">Vendor has been approved. No pending applications.</p>
+              </div>
+            ) : (
+              <div className="text-center py-10">
+                <Store className="w-12 h-12 text-[#f9bf8f] mx-auto mb-3 opacity-50" />
+                <p className="text-[#7a6274] text-sm font-medium">No pending vendor applications right now.</p>
+              </div>
+            )}
+            
+            {/* List of active vendors (mock) */}
+            <h2 className="text-lg font-bold text-[#34222e] mt-10 mb-4 flex items-center gap-2">
+              <Users className="w-5 h-5" /> Active Network Vendors
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="border border-[#f9bf8f]/40 rounded-2xl p-4 bg-white">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-bold text-[#34222e]">ElectroHub</span>
+                  <span className="px-2 py-0.5 rounded-md bg-[#f2fcf4] text-[#0c831f] text-[10px] font-bold border border-[#0c831f]/20">ACTIVE</span>
+                </div>
+                <p className="text-xs text-[#7a6274] mb-3">Location: Bangalore</p>
+                <div className="text-xs font-mono text-[#34222e] bg-[#fee9d7] px-2 py-1 rounded inline-block">124 Products</div>
+              </div>
+              
+              <div className="border border-[#f9bf8f]/40 rounded-2xl p-4 bg-white">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-bold text-[#34222e]">TechComponents Pune</span>
+                  <span className="px-2 py-0.5 rounded-md bg-[#f2fcf4] text-[#0c831f] text-[10px] font-bold border border-[#0c831f]/20">ACTIVE</span>
+                </div>
+                <p className="text-xs text-[#7a6274] mb-3">Location: Pune</p>
+                <div className="text-xs font-mono text-[#34222e] bg-[#fee9d7] px-2 py-1 rounded inline-block">89 Products</div>
+              </div>
+
+              {vendorStore && vendorStore.status === 'approved' && (
+                <div className="border border-[#0c831f]/40 rounded-2xl p-4 bg-[#f2fcf4] relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-10 h-10 bg-[#0c831f]/10 rounded-bl-full flex items-center justify-center">
+                    <div className="w-2 h-2 bg-[#0c831f] rounded-full mt-[-10px] mr-[-10px]"></div>
+                  </div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-bold text-[#0c831f]">{vendorStore.storeName}</span>
+                    <span className="px-2 py-0.5 rounded-md bg-[#0c831f] text-white text-[10px] font-bold shadow-sm">NEW</span>
+                  </div>
+                  <p className="text-xs text-[#0c831f]/70 mb-3">Location: {vendorStore.city}</p>
+                  <div className="text-xs font-mono text-[#0c831f] bg-white border border-[#0c831f]/20 px-2 py-1 rounded inline-block">0 Products</div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
-        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(320px,0.85fr)_minmax(0,1.5fr)]">
-          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-            <div className="mb-5 flex items-center justify-between">
-              <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900">
-                {editingId ? <Pencil className="h-5 w-5 text-orange-600" /> : <Plus className="h-5 w-5 text-orange-600" />}
-                {editingId ? 'Edit product' : 'Add a product'}
-              </h2>
-              {editingId && <button type="button" onClick={resetForm} aria-label="Cancel editing" className="rounded-md p-1 text-slate-500 hover:bg-slate-100"><X className="h-5 w-5" /></button>}
-            </div>
+        {/* Products Tab */}
+        {activeTab === 'products' && (
+          <div className="bg-[#fffbf7] rounded-3xl p-6 border border-[#f9bf8f]/60 shadow-sm flex flex-col items-center justify-center min-h-[400px]">
+            <Package className="w-16 h-16 text-[#f9bf8f] mb-4" />
+            <h2 className="text-xl font-bold text-[#34222e] mb-2">Global Catalog Management</h2>
+            <p className="text-sm text-[#7a6274] max-w-md text-center">
+              Since transitioning to a multi-vendor marketplace, product management is now handled by individual vendors in their Vendor Portal. 
+              Admin oversight tools will be available here soon.
+            </p>
+          </div>
+        )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <label className="block text-sm font-medium text-slate-700">Product name
-                <input required maxLength={160} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/15" placeholder="12V DC gear motor" />
-              </label>
-
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <label className="block text-sm font-medium text-slate-700">SKU
-                  <input required maxLength={40} value={form.sku} onChange={e => setForm({ ...form, sku: e.target.value.toUpperCase() })} className="mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm uppercase outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/15" placeholder="MOT-12V-001" />
-                </label>
-                <label className="block text-sm font-medium text-slate-700">Category
-                  <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} className="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-orange-500">
-                    {categories.map(category => <option key={category}>{category}</option>)}
-                  </select>
-                </label>
-              </div>
-
-              <label className="block text-sm font-medium text-slate-700">Description
-                <textarea required maxLength={3000} rows={4} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className="mt-1.5 w-full resize-y rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/15" placeholder="Product details and key features" />
-              </label>
-
-              <div className="grid grid-cols-2 gap-3">
-                <label className="block text-sm font-medium text-slate-700">Price (INR)
-                  <input type="number" required min="0" step="0.01" value={form.price} onChange={e => setForm({ ...form, price: e.target.value })} className="mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-orange-500" placeholder="365.00" />
-                </label>
-                <label className="block text-sm font-medium text-slate-700">Stock quantity
-                  <input type="number" required min="0" step="1" value={form.stock} onChange={e => setForm({ ...form, stock: e.target.value })} className="mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-orange-500" placeholder="25" />
-                </label>
-              </div>
-
-              <label className="block text-sm font-medium text-slate-700">Image URL <span className="font-normal text-slate-400">(optional)</span>
-                <span className="relative mt-1.5 block">
-                  <ImagePlus className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                  <input type="url" value={form.imageUrl} onChange={e => setForm({ ...form, imageUrl: e.target.value })} className="w-full rounded-lg border border-slate-300 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-orange-500" placeholder="https://example.com/product.jpg" />
-                </span>
-              </label>
-
-              {editingId && (
-                <label className="flex items-center gap-2 text-sm text-slate-700">
-                  <input type="checkbox" checked={form.isAvailable} onChange={e => setForm({ ...form, isAvailable: e.target.checked })} className="h-4 w-4 accent-orange-600" />
-                  Show this product in the storefront
-                </label>
-              )}
-
-              <button type="submit" disabled={saving} className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#EF4F12] px-4 py-3 text-sm font-bold text-white hover:bg-[#d4430e] disabled:cursor-not-allowed disabled:opacity-60">
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                {saving ? 'Saving...' : editingId ? 'Save changes' : 'Add product'}
-              </button>
-            </form>
-          </section>
-
-          <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <div className="flex items-center justify-between border-b border-slate-200 p-5 sm:px-6">
-              <div>
-                <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900"><Boxes className="h-5 w-5 text-orange-600" />Catalog</h2>
-                <p className="mt-1 text-xs text-slate-500">{products.length} products</p>
-              </div>
-              <button onClick={() => void loadProducts()} disabled={loading} aria-label="Refresh products" className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50 disabled:opacity-50">
-                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-              </button>
-            </div>
-
-            {loading ? (
-              <div className="flex items-center justify-center gap-2 p-12 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" />Loading products...</div>
-            ) : products.length === 0 ? (
-              <div className="p-10 text-center text-sm text-slate-500">No products yet. Add the first one with the form.</div>
-            ) : (
-              <div className="divide-y divide-slate-100">
-                {products.map(product => (
-                  <article key={product._id} className="flex items-center gap-3 p-4 sm:gap-4 sm:px-6">
-                    {product.images?.[0] ? <img src={product.images[0]} alt="" className="h-14 w-14 shrink-0 rounded-lg border border-slate-100 bg-slate-50 object-contain p-1" /> : <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-400"><Boxes className="h-6 w-6" /></div>}
-                    <div className="min-w-0 flex-1">
-                      <h3 className="truncate text-sm font-semibold text-slate-900">{product.name}</h3>
-                      <p className="mt-0.5 text-xs text-slate-500">{product.sku} · {product.category}</p>
-                      <p className="mt-1 text-xs font-medium text-slate-700">₹{product.price.toLocaleString('en-IN')} · {product.stock} in stock · {product.isAvailable ? 'Active' : 'Hidden'}</p>
-                    </div>
-                    <button onClick={() => startEdit(product)} className="flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-orange-300 hover:text-orange-700"><Pencil className="h-3.5 w-3.5" /><span className="hidden sm:inline">Edit</span></button>
-                  </article>
-                ))}
-              </div>
-            )}
-          </section>
-        </div>
       </div>
     </div>
   );
-};
+}

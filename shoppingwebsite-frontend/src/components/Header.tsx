@@ -46,6 +46,8 @@ const WAREHOUSE_HUBS = [
   { city: 'Hyderabad', area: 'HITEC City, Madhapur', pincode: '500081', eta: '15 MINS', active: false },
 ];
 
+import { useStore } from '../context/StoreContext';
+
 export const Header: React.FC<HeaderProps> = ({
   cart,
   wishlistCount,
@@ -59,10 +61,11 @@ export const Header: React.FC<HeaderProps> = ({
   products,
   onSelectProduct,
 }) => {
+  const { selectedCity, setSelectedCity } = useStore();
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
-  const [selectedHub, setSelectedHub] = useState(WAREHOUSE_HUBS[0]);
+  const selectedHub = WAREHOUSE_HUBS.find(h => h.city === selectedCity) || WAREHOUSE_HUBS[0];
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Cycling search placeholder like Blinkit
@@ -361,7 +364,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <div
                   key={hub.pincode}
                   onClick={() => {
-                    setSelectedHub(hub);
+                    setSelectedCity(hub.city);
                     setShowLocationModal(false);
                   }}
                   className={`p-3.5 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${

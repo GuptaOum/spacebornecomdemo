@@ -39,6 +39,10 @@ interface StoreContextType {
   gstDetails: GstDetails;
   setGstDetails: (details: GstDetails) => void;
 
+  // Location
+  selectedCity: string;
+  setSelectedCity: (city: string) => void;
+
   // Orders
   orders: Order[];
   addOrder: (order: Order) => void;
@@ -55,11 +59,27 @@ interface StoreContextType {
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
+const MOCK_VENDORS = [
+  { id: 'v-1', name: 'ElectroHub', city: 'Bangalore' },
+  { id: 'v-2', name: 'TechComponents', city: 'Pune' },
+  { id: 'v-3', name: 'Kanpur Robotics', city: 'Kanpur' },
+  { id: 'v-4', name: 'Delhi Makers', city: 'Delhi' },
+  { id: 'v-5', name: 'Chennai Electronics', city: 'Chennai' },
+  { id: 'v-6', name: 'Noida Parts', city: 'Noida' },
+  { id: 'v-7', name: 'HydraTech', city: 'Hyderabad' }
+];
+
+const ENRICHED_PRODUCTS = PRODUCTS.map((p, index) => {
+  const vendor = MOCK_VENDORS[index % MOCK_VENDORS.length];
+  return { ...p, vendorId: vendor.id, vendorName: vendor.name, city: vendor.city };
+});
+
 export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   // Products Catalog State
-  const [products, setProducts] = useState<Product[]>(PRODUCTS);
+  const [products, setProducts] = useState<Product[]>(ENRICHED_PRODUCTS);
   const [selectedCategory, setSelectedCategory] = useState<string>('All Categories');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [selectedCity, setSelectedCity] = useState<string>('Kanpur');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
 
@@ -316,14 +336,19 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const clearCompare = () => setCompareList([]);
 
+  // Derived products based on city
+  const visibleProducts = products.filter(p => !p.city || p.city === selectedCity);
+
   return (
     <StoreContext.Provider
       value={{
-        products,
+        products: visibleProducts,
         selectedCategory,
         setSelectedCategory,
         searchQuery,
         setSearchQuery,
+        selectedCity,
+        setSelectedCity,
         selectedProduct,
         setSelectedProduct,
         quickViewProduct,

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { AuthProvider } from '../context/AuthContext';
 import { StoreProvider } from '../context/StoreContext';
 import { NextAppShell } from '../components/NextAppShell';
 
@@ -41,11 +42,13 @@ export default function RootLayout({
         <script src="https://checkout.razorpay.com/v1/checkout.js" async />
       </head>
       <body>
-        <StoreProvider>
-          <NextAppShell>
-            {children}
-          </NextAppShell>
-        </StoreProvider>
+        <AuthProvider>
+          <StoreProvider>
+            <NextAppShell>
+              {children}
+            </NextAppShell>
+          </StoreProvider>
+        </AuthProvider>
       </body>
     </html>
   );

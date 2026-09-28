@@ -135,6 +135,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             {product.name}
           </h3>
 
+          {/* Vendor Badge */}
+          {product.vendorName && (
+            <div className="flex items-center gap-1 mb-1.5">
+              <span className="text-[9px] font-bold text-[#0c831f] bg-[#f2fcf4] border border-[#0c831f]/20 px-1.5 py-0.5 rounded shadow-xs truncate max-w-full">
+                By {product.vendorName} • {product.city || 'Local'}
+              </span>
+            </div>
+          )}
+
           {/* Clean Technical Spec Line */}
           <p className="text-[11px] font-medium text-[#34222e]/70 truncate mb-2">
             {specSummary}

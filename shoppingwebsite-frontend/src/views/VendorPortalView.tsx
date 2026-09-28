@@ -45,6 +45,9 @@ const SAMPLE_PRESET_IMAGES = [
   { label: 'LiPo Battery Pack', url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBf0XjfJbrhdjhg0VbpvLiPKoO99LBFE6uCTP-_KxA7_79w9ZX4bIG2qSK7tzk__a0aXVJYpAy9tla2Ov7NtXgdJVfDe641HkNv20Vvl5U3VkekKeIXRhJKzeftuu1jHEFuFjSWMxrMEBWzVzGVoCz4wX3uPe1r-dzg6i67KrUgOrEVxwrMvACitKF89MRhhIwBWIJ4E0fbLYP1i6X3_HT1VPgLXDdlyk74i4dPl3qv3QR65L3F_qFq' }
 ];
 
+import { useAuth } from '../context/AuthContext';
+import { Clock } from 'lucide-react';
+
 export const VendorPortalView: React.FC<VendorPortalViewProps> = ({
   products,
   onAddProduct,
@@ -52,8 +55,11 @@ export const VendorPortalView: React.FC<VendorPortalViewProps> = ({
   onDeleteProduct,
   onSelectProduct,
   onNavigate,
-  user
+  user: initialUser
 }) => {
+  const { user: authUser, vendorStore } = useAuth();
+  const user = authUser || initialUser;
+
   const [activeTab, setActiveTab] = useState<'inventory' | 'add_product' | 'hubs'>('add_product');
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -152,6 +158,46 @@ export const VendorPortalView: React.FC<VendorPortalViewProps> = ({
   // Stats calculation
   const totalInventoryUnits = products.reduce((acc, p) => acc + p.stock, 0);
   const totalCatalogValue = products.reduce((acc, p) => acc + p.price * p.stock, 0);
+
+  if (!user || user.role !== 'vendor') {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center bg-[#fffbf7]">
+        <Building2 className="w-16 h-16 text-[#f9bf8f] mb-4" />
+        <h2 className="text-xl font-bold text-[#34222e]">Vendor Access Required</h2>
+        <p className="text-sm text-[#7a6274] mt-2 mb-6 text-center max-w-md">
+          Please sign in with a verified vendor account to access the Spaceborn Vendor Portal.
+        </p>
+        <button 
+          onClick={() => onNavigate('auth')}
+          className="px-6 py-2.5 bg-[#0c831f] text-white rounded-xl font-bold text-sm hover:bg-[#096618] transition shadow-md"
+        >
+          Sign In
+        </button>
+      </div>
+    );
+  }
+
+  if (vendorStore?.status === 'pending') {
+    return (
+      <div className="min-h-[70vh] bg-[#fee9d7] flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-[#fffbf7] rounded-3xl border border-[#f9bf8f]/40 p-8 text-center shadow-sm">
+          <div className="w-16 h-16 bg-[#fee9d7] text-[#0c831f] rounded-full flex items-center justify-center mx-auto mb-5">
+            <Clock className="w-8 h-8" />
+          </div>
+          <h2 className="text-2xl font-bold text-[#34222e] mb-2">Application Pending</h2>
+          <p className="text-sm text-[#7a6274] leading-relaxed mb-6">
+            Your vendor application for <span className="font-semibold text-[#34222e]">{vendorStore.storeName}</span> in {vendorStore.city} is currently under review by our Admin team. We'll notify you once you're approved to start selling!
+          </p>
+          <button 
+            onClick={() => onNavigate('catalog')}
+            className="w-full py-3 bg-[#34222e] text-white rounded-xl text-sm font-bold hover:bg-[#1f141b] transition"
+          >
+            Return to Catalog
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#fee9d7] text-[#34222e] py-6 sm:py-8">
