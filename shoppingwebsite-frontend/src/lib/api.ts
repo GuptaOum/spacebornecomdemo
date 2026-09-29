@@ -55,10 +55,12 @@ export async function login(email: string, password: string): Promise<UserProfil
   return toUserProfile(result.user);
 }
 
-export async function register(fullName: string, email: string, password: string): Promise<void> {
-  await apiRequest<BackendUser>('/auth/register', {
+export async function register(fullName: string, email: string, password: string): Promise<UserProfile> {
+  const result = await apiRequest<{ user: BackendUser; accessToken: string }>('/auth/register', {
     method: 'POST', body: JSON.stringify({ fullName, email, password }),
   });
+  localStorage.setItem(TOKEN_KEY, result.accessToken);
+  return toUserProfile(result.user);
 }
 
 export function toFrontendOrder(order: any): Order {

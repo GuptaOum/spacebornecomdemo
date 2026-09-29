@@ -1,9 +1,10 @@
 'use client';
 import React, { useState } from 'react';
-import { AlertCircle, Eye, EyeOff, Loader2, LockKeyhole, Mail, UserRound, Store, Shield } from 'lucide-react';
+import { AlertCircle, Eye, EyeOff, Loader2, LockKeyhole, Mail, UserRound } from 'lucide-react';
 import { AppView, UserProfile } from '../types';
 import { SpacebornLogo } from '../components/SpacebornLogo';
 import { useAuth } from '../context/AuthContext';
+import { login as authenticate, register as createAccount } from '../lib/api';
 
 interface AuthViewProps {
   onLoginSuccess?: (user: UserProfile) => void;
@@ -13,15 +14,13 @@ interface AuthViewProps {
 
 export function AuthView({ onLoginSuccess, onNavigate, initialMode = 'login' }: AuthViewProps) {
   const [activeTab, setActiveTab] = useState<'login' | 'signup'>(initialMode);
-  const [role, setRole] = useState<'customer' | 'vendor' | 'admin'>('customer');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [city, setCity] = useState('Bangalore');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const { login, user } = useAuth();
+  const { login } = useAuth();
 
   const selectTab = (tab: 'login' | 'signup') => {
     setActiveTab(tab);
@@ -33,32 +32,26 @@ export function AuthView({ onLoginSuccess, onNavigate, initialMode = 'login' }: 
     event.preventDefault();
     setErrorMessage(null);
     
-    if (activeTab === 'signup' && password.length < 4) {
-      setErrorMessage('Use a password with at least 4 characters.');
+    if (activeTab === 'signup' && password.length < 8) {
+      setErrorMessage('Use a password with at least 8 characters.');
       return;
     }
 
     setLoading(true);
-    
-    // Simulate network delay
-    setTimeout(() => {
-      try {
-        const userName = activeTab === 'signup' ? fullName : email.split('@')[0];
-        login(role, email, userName, city);
-        
-        if (role === 'admin') {
-          onNavigate('admin');
-        } else if (role === 'vendor') {
-          onNavigate('vendor');
-        } else {
-          onNavigate('catalog');
-        }
-      } catch (err) {
-        setErrorMessage('Failed to authenticate');
-      } finally {
-        setLoading(false);
-      }
-    }, 800);
+
+    try {
+      const user = activeTab === 'signup'
+        ? await createAccount(fullName, email, password)
+        : await authenticate(email, password);
+      const role = user.role === 'admin' ? 'admin' : 'customer';
+      login(role, user.email, user.fullName);
+      onLoginSuccess?.(user);
+      onNavigate(user.role === 'admin' ? 'admin' : 'catalog');
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : 'Unable to sign in. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -81,37 +74,6 @@ export function AuthView({ onLoginSuccess, onNavigate, initialMode = 'login' }: 
           </button>
         </div>
 
-        {/* Role Selection */}
-        <div className="mb-5">
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Continue as</p>
-          <div className="grid grid-cols-3 gap-2">
-            <button 
-              type="button"
-              onClick={() => setRole('customer')}
-              className={`flex flex-col items-center p-2 rounded-xl border transition ${role === 'customer' ? 'border-[#EF4F12] bg-[#EF4F12]/5 text-[#EF4F12]' : 'border-slate-200 text-slate-500 hover:border-[#EF4F12]/30 hover:bg-slate-50'}`}
-            >
-              <UserRound className="w-5 h-5 mb-1" />
-              <span className="text-[10px] font-bold">Customer</span>
-            </button>
-            <button 
-              type="button"
-              onClick={() => setRole('vendor')}
-              className={`flex flex-col items-center p-2 rounded-xl border transition ${role === 'vendor' ? 'border-[#0c831f] bg-[#0c831f]/5 text-[#0c831f]' : 'border-slate-200 text-slate-500 hover:border-[#0c831f]/30 hover:bg-slate-50'}`}
-            >
-              <Store className="w-5 h-5 mb-1" />
-              <span className="text-[10px] font-bold">Vendor</span>
-            </button>
-            <button 
-              type="button"
-              onClick={() => setRole('admin')}
-              className={`flex flex-col items-center p-2 rounded-xl border transition ${role === 'admin' ? 'border-[#34222e] bg-[#34222e]/5 text-[#34222e]' : 'border-slate-200 text-slate-500 hover:border-[#34222e]/30 hover:bg-slate-50'}`}
-            >
-              <Shield className="w-5 h-5 mb-1" />
-              <span className="text-[10px] font-bold">Admin</span>
-            </button>
-          </div>
-        </div>
-
         {errorMessage && (
           <div role="alert" className="mt-5 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -130,19 +92,6 @@ export function AuthView({ onLoginSuccess, onNavigate, initialMode = 'login' }: 
             </label>
           )}
 
-          {activeTab === 'signup' && role === 'vendor' && (
-            <label className="block text-sm font-medium text-slate-700">
-              City (Location)
-              <select value={city} onChange={(e) => setCity(e.target.value)} className="mt-1.5 w-full rounded-lg border border-slate-300 py-2.5 px-3 text-sm outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-500/15 bg-white">
-                <option value="Bangalore">Bangalore</option>
-                <option value="Kanpur">Kanpur</option>
-                <option value="Pune">Pune</option>
-                <option value="Chennai">Chennai</option>
-                <option value="Gurugram">Gurugram</option>
-              </select>
-            </label>
-          )}
-
           <label className="block text-sm font-medium text-slate-700">
             Email address
             <span className="relative mt-1.5 block">
@@ -155,18 +104,14 @@ export function AuthView({ onLoginSuccess, onNavigate, initialMode = 'login' }: 
             Password
             <span className="relative mt-1.5 block">
               <LockKeyhole className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-              <input autoComplete={activeTab === 'login' ? 'current-password' : 'new-password'} type={showPassword ? 'text' : 'password'} minLength={4} required value={password} onChange={(event) => setPassword(event.target.value)} placeholder={activeTab === 'signup' ? 'At least 4 characters' : 'Your password'} className="w-full rounded-lg border border-slate-300 py-2.5 pl-9 pr-10 text-sm outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-500/15" />
+              <input autoComplete={activeTab === 'login' ? 'current-password' : 'new-password'} type={showPassword ? 'text' : 'password'} minLength={activeTab === 'signup' ? 8 : undefined} required value={password} onChange={(event) => setPassword(event.target.value)} placeholder={activeTab === 'signup' ? 'At least 8 characters' : 'Your password'} className="w-full rounded-lg border border-slate-300 py-2.5 pl-9 pr-10 text-sm outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-500/15" />
               <button type="button" aria-label={showPassword ? 'Hide password' : 'Show password'} onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-700">
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </span>
           </label>
 
-          <button type="submit" disabled={loading} className={`flex w-full items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-bold text-white transition disabled:cursor-not-allowed disabled:opacity-60 ${
-            role === 'admin' ? 'bg-[#34222e] hover:bg-[#1f141b]' :
-            role === 'vendor' ? 'bg-[#0c831f] hover:bg-[#096618]' :
-            'bg-[#EF4F12] hover:bg-[#d4430e]'
-          }`}>
+          <button type="submit" disabled={loading} className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#EF4F12] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#d4430e] disabled:cursor-not-allowed disabled:opacity-60">
             {loading && <Loader2 className="h-4 w-4 animate-spin" />}
             {loading ? 'Please wait...' : activeTab === 'login' ? 'Sign in' : 'Create account'}
           </button>

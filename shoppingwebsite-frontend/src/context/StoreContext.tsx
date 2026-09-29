@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Product, CartItem, UserProfile, Order, GstDetails } from '../types';
 import { PRODUCTS, INITIAL_ORDERS } from '../data/products';
-import { apiRequest } from '../lib/api';
+import { apiRequest, toFrontendOrder } from '../lib/api';
 
 interface StoreContextType {
   // Products
@@ -221,6 +221,19 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         console.warn('Could not save user', e);
       }
     }
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !currentUser || !localStorage.getItem('spaceborn_access_token')) return;
+    apiRequest<any[]>('/orders')
+      .then((backendOrders) => {
+        const mappedOrders = backendOrders.map(toFrontendOrder);
+        setOrders((existingOrders) => [
+          ...mappedOrders,
+          ...existingOrders.filter((order) => !mappedOrders.some((savedOrder) => savedOrder.id === order.id)),
+        ]);
+      })
+      .catch((error) => console.warn('Could not load account orders:', error));
   }, [currentUser]);
 
   // Cart operations

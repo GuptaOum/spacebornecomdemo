@@ -23,7 +23,7 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({ order, onClose }) => {
           <div className="flex items-center space-x-2">
             <span className="font-bold text-sm">Official GST Tax E-Invoice #{order.orderNumber}</span>
             <span className="text-[10px] bg-[#0c831f] text-white font-bold px-2 py-0.5 rounded">
-              Paid via Stripe
+              Paid via {order.payment.method || 'Razorpay'}
             </span>
           </div>
           <div className="flex items-center space-x-3">
@@ -70,7 +70,7 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({ order, onClose }) => {
               <p><strong>Invoice Date:</strong> {order.date}</p>
               <p className="font-mono"><strong>Place of Supply:</strong> {order.shippingAddress.state} ({order.gstDetails?.stateCode || '29'})</p>
               <p className="font-mono text-[10px] text-slate-500">
-                <strong>Stripe Txn:</strong> {order.payment.transactionId}
+                <strong>Transaction ID:</strong> {order.payment.transactionId}
               </p>
             </div>
           </div>
@@ -176,7 +176,7 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({ order, onClose }) => {
               </div>
 
               <div className="text-[11px] text-slate-500 space-y-0.5 pt-1">
-                <p><strong>Payment Gateway:</strong> Stripe Payments Inc. (PCI-DSS Level 1)</p>
+                <p><strong>Payment Gateway:</strong> {order.payment.method || 'Razorpay'}</p>
                 <p><strong>Payment Status:</strong> PAID / AUTHORIZED ({(order.payment.cardBrand || 'Card').toUpperCase()} ending {order.payment.cardLast4 || '4242'})</p>
               </div>
             </div>
