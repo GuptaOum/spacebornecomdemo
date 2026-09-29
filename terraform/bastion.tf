@@ -1,3 +1,4 @@
+
 # Security Group for Bastion Host
 resource "aws_security_group" "bastion_sg" {
   name        = "spaceborn-bastion-sg"
@@ -20,6 +21,17 @@ resource "aws_security_group" "bastion_sg" {
   }
 }
 
+# Generate a new SSH Key Pair
+resource "tls_private_key" "bastion_key" {
+  algorithm = "RSA"
+  rsa_bits  = 4096
+}
+
+resource "aws_key_pair" "bastion_key_pair" {
+  key_name   = "spaceborn-bastion-key"
+  public_key = tls_private_key.bastion_key.public_key_openssh
+}
+
 # Find the latest Amazon Linux 2023 AMI
 data "aws_ami" "amazon_linux" {
   most_recent = true
@@ -35,7 +47,7 @@ data "aws_ami" "amazon_linux" {
 resource "aws_instance" "bastion" {
   ami           = data.aws_ami.amazon_linux.id
   instance_type = "t3.micro"
-  key_name      = "face-attendance" # Using your existing key pair
+  key_name      = aws_key_pair.bastion_key_pair.key_name
 
   subnet_id                   = aws_subnet.public.id
   vpc_security_group_ids      = [aws_security_group.bastion_sg.id]
@@ -50,3 +62,10 @@ output "bastion_public_ip" {
   description = "Public IP of the Bastion Host"
   value       = aws_instance.bastion.public_ip
 }
+
+output "bastion_private_key" {
+  description = "Private key for SSH access (save this to a .pem file)"
+  value       = tls_private_key.bastion_key.private_key_pem
+  sensitive   = true
+}
+
