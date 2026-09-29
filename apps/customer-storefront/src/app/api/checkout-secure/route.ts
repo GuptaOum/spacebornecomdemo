@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import * as admin from 'firebase-admin';
+import { getApps, initializeApp } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
 
-if (!admin.apps.length) {
-  admin.initializeApp({ projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID });
-}
+const app = !getApps().length
+  ? initializeApp({ projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID })
+  : getApps()[0];
+
+const auth = getAuth(app);
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -17,9 +20,9 @@ export async function POST(req: Request) {
     if (!authHeader) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     
     const token = authHeader.split('Bearer ')[1];
-    const decoded = await admin.auth().verifyIdToken(token);
+    const decoded = await auth.verifyIdToken(token);
     
-    const { cart, total, userId } = await req.json();
+    const { cart, total, userId, shippingAddress } = await req.json();
     if (decoded.uid !== userId && userId !== 'guest-session') {
       return NextResponse.json({ error: 'User mismatch' }, { status: 403 });
     }
@@ -38,11 +41,13 @@ export async function POST(req: Request) {
       .eq('user_id', userId).eq('status', 'active');
 
     // Safely Decrement Stock Using Service Key
-    for (const item of cart) {
-      const { data: prodData } = await supabase.from('products').select('stock').eq('id', item.product.id).single();
-      if (prodData) {
-        const newStock = Math.max(0, prodData.stock - item.quantity);
-        await supabase.from('products').update({ stock: newStock }).eq('id', item.product.id);
+    if (cart && Array.isArray(cart)) {
+      for (const item of cart) {
+        const { data: prodData } = await supabase.from('products').select('stock').eq('id', item.product.id).single();
+        if (prodData) {
+          const newStock = Math.max(0, prodData.stock - item.quantity);
+          await supabase.from('products').update({ stock: newStock }).eq('id', item.product.id);
+        }
       }
     }
 

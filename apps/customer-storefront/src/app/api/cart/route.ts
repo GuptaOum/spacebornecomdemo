@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import * as admin from 'firebase-admin';
+import { getApps, initializeApp } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
 
-if (!admin.apps.length) {
-  admin.initializeApp({
-    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
-  });
-}
+const app = !getApps().length
+  ? initializeApp({ projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID })
+  : getApps()[0];
+
+const auth = getAuth(app);
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -19,7 +20,7 @@ export async function GET(req: Request) {
     if (!authHeader) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     
     const token = authHeader.split('Bearer ')[1];
-    const decoded = await admin.auth().verifyIdToken(token);
+    const decoded = await auth.verifyIdToken(token);
     const userId = decoded.uid;
 
     let { data: cartData } = await supabase.from('carts').select('id').eq('user_id', userId).eq('status', 'active').single();
@@ -46,7 +47,7 @@ export async function POST(req: Request) {
     if (!authHeader) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     
     const token = authHeader.split('Bearer ')[1];
-    const decoded = await admin.auth().verifyIdToken(token);
+    await auth.verifyIdToken(token);
     
     const { cartId, items } = await req.json();
     
