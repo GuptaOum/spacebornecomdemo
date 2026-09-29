@@ -28,3 +28,9 @@ variable "ecr_celery_image_uri" {
   default     = "placeholder-uri"
 }
 
+
+variable "db_password" {
+  type        = string
+  description = "Password for the RDS instance"
+  sensitive   = true
+}

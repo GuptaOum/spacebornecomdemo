@@ -33,3 +33,6 @@ apps.tar.gz
 patch_*.js
 fix_all.py
 *.tsx_ec2.tsx
+
+# TypeScript
+*.tsbuildinfo

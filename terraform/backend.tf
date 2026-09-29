@@ -41,9 +41,9 @@ resource "aws_ecs_task_definition" "redis" {
   execution_role_arn       = aws_iam_role.ecs_execution_role.arn
 
   container_definitions = jsonencode([{
-    name      = "redis"
-    image     = "redis:7-alpine"
-    essential = true
+    name         = "redis"
+    image        = "redis:7-alpine"
+    essential    = true
     portMappings = [{ containerPort = 6379 }]
   }])
 }
@@ -96,8 +96,8 @@ resource "aws_ecs_service" "redis_service" {
   launch_type     = "FARGATE"
   desired_count   = 1
   network_configuration {
-    subnets          = [aws_subnet.private.id]
-    security_groups  = [aws_security_group.admin_sg.id]
+    subnets         = [aws_subnet.private.id]
+    security_groups = [aws_security_group.admin_sg.id]
   }
   service_registries {
     registry_arn = aws_service_discovery_service.redis.arn
@@ -111,8 +111,8 @@ resource "aws_ecs_service" "rabbitmq_service" {
   launch_type     = "FARGATE"
   desired_count   = 1
   network_configuration {
-    subnets          = [aws_subnet.private.id]
-    security_groups  = [aws_security_group.admin_sg.id]
+    subnets         = [aws_subnet.private.id]
+    security_groups = [aws_security_group.admin_sg.id]
   }
   service_registries {
     registry_arn = aws_service_discovery_service.rabbitmq.arn
@@ -126,7 +126,7 @@ resource "aws_ecs_service" "celery_service" {
   launch_type     = "FARGATE"
   desired_count   = 1
   network_configuration {
-    subnets          = [aws_subnet.private.id]
-    security_groups  = [aws_security_group.admin_sg.id]
+    subnets         = [aws_subnet.private.id]
+    security_groups = [aws_security_group.admin_sg.id]
   }
 }
