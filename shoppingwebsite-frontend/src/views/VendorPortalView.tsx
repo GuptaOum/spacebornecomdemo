@@ -108,6 +108,9 @@ export const VendorPortalView: React.FC<VendorPortalViewProps> = ({
 
     const newProduct: Product = {
       id: `vnd-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      vendorId: currentVendorId || `vnd-${user?.id || 'partner'}`,
+      vendorName: vendorStore?.storeName || user?.companyName || user?.fullName || 'Spaceborn Verified Seller',
+      city: vendorStore?.city || 'Kanpur Hub',
       name: name.trim(),
       sku: sku.trim() || `VND-${Date.now().toString().slice(-6)}`,
       category: category,
@@ -157,27 +160,69 @@ export const VendorPortalView: React.FC<VendorPortalViewProps> = ({
     }, 1200);
   };
 
-  // Derive vendor-specific products
-  const vendorProducts = vendorStore ? products.filter(p => p.vendorId === vendorStore.id) : [];
+  // Derive vendor-specific products (strictly isolated to this vendor only)
+  const currentVendorId = vendorStore?.id || user?.id;
+  const vendorProducts = currentVendorId 
+    ? products.filter(p => p.vendorId === currentVendorId || p.vendorId === user?.id || (user?.email && p.vendorId === user.email))
+    : [];
 
-  // Stats calculation
+  // Stats calculation strictly scoped to this vendor
   const totalInventoryUnits = vendorProducts.reduce((acc, p) => acc + p.stock, 0);
   const totalCatalogValue = vendorProducts.reduce((acc, p) => acc + p.price * p.stock, 0);
 
   if (!user || user.role !== 'vendor') {
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center bg-[#fffbf7]">
-        <Building2 className="w-16 h-16 text-[#f9bf8f] mb-4" />
-        <h2 className="text-xl font-bold text-[#34222e]">Vendor Access Required</h2>
-        <p className="text-sm text-[#7a6274] mt-2 mb-6 text-center max-w-md">
-          Please sign in with a verified vendor account to access the Spaceborn Vendor Portal.
-        </p>
-        <button 
-          onClick={() => onNavigate('auth')}
-          className="px-6 py-2.5 bg-[#0c831f] text-white rounded-xl font-bold text-sm hover:bg-[#096618] transition shadow-md"
-        >
-          Sign In
-        </button>
+      <div className="min-h-[75vh] flex flex-col items-center justify-center bg-[#fffbf7] px-4 py-12">
+        <div className="max-w-xl w-full bg-white rounded-3xl border border-[#f9bf8f]/60 p-8 sm:p-10 shadow-lg text-center space-y-6">
+          <div className="w-16 h-16 rounded-2xl bg-[#f2fcf4] border border-[#0c831f]/20 text-[#0c831f] flex items-center justify-center mx-auto shadow-xs">
+            <Store className="w-8 h-8" />
+          </div>
+
+          <div>
+            <span className="text-xs font-bold uppercase tracking-wider text-[#0c831f] bg-[#f2fcf4] px-3 py-1 rounded-full border border-[#0c831f]/20">
+              Verified Seller Network
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-black text-[#34222e] mt-3">
+              Spaceborn Partner & Seller Hub
+            </h2>
+            <p className="text-xs sm:text-sm text-[#7a6274] mt-2 leading-relaxed">
+              Are you a component manufacturer, electronics distributor, or local maker shop? Sell your hardware directly through Spaceborn's 10-15 minute dark store network.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-left pt-2">
+            <div className="p-3.5 rounded-2xl bg-[#fee9d7]/30 border border-[#f9bf8f]/40">
+              <Zap className="w-4 h-4 text-[#e2434b] mb-1.5" />
+              <p className="text-xs font-bold text-[#34222e]">10-Min Delivery</p>
+              <p className="text-[11px] text-[#7a6274] mt-0.5">Instant dispatch across active hubs</p>
+            </div>
+            <div className="p-3.5 rounded-2xl bg-[#fee9d7]/30 border border-[#f9bf8f]/40">
+              <ShieldCheck className="w-4 h-4 text-[#0c831f] mb-1.5" />
+              <p className="text-xs font-bold text-[#34222e]">Full Isolation</p>
+              <p className="text-[11px] text-[#7a6274] mt-0.5">Manage only your inventory & pricing</p>
+            </div>
+            <div className="p-3.5 rounded-2xl bg-[#fee9d7]/30 border border-[#f9bf8f]/40">
+              <TrendingUp className="w-4 h-4 text-[#0c831f] mb-1.5" />
+              <p className="text-xs font-bold text-[#34222e]">Zero Listing Fee</p>
+              <p className="text-[11px] text-[#7a6274] mt-0.5">Fast weekly GST-compliant payouts</p>
+            </div>
+          </div>
+
+          <div className="pt-4 border-t border-[#f9bf8f]/30 flex flex-col sm:flex-row gap-3">
+            <button 
+              onClick={() => onNavigate('auth')}
+              className="flex-1 py-3 bg-[#0c831f] hover:bg-[#0a6e1a] text-white rounded-xl font-bold text-xs sm:text-sm transition shadow-md shadow-[#0c831f]/20 cursor-pointer"
+            >
+              Sign In with Vendor Account
+            </button>
+            <button 
+              onClick={() => onNavigate('catalog')}
+              className="py-3 px-5 bg-white border border-[#f9bf8f] text-[#34222e] hover:bg-[#fee9d7]/50 rounded-xl font-bold text-xs sm:text-sm transition cursor-pointer"
+            >
+              Return to Store
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -189,13 +234,13 @@ export const VendorPortalView: React.FC<VendorPortalViewProps> = ({
           <div className="w-16 h-16 bg-[#fee9d7] text-[#0c831f] rounded-full flex items-center justify-center mx-auto mb-5">
             <Clock className="w-8 h-8" />
           </div>
-          <h2 className="text-2xl font-bold text-[#34222e] mb-2">Application Pending</h2>
+          <h2 className="text-2xl font-bold text-[#34222e] mb-2">Application Under Review</h2>
           <p className="text-sm text-[#7a6274] leading-relaxed mb-6">
-            Your vendor application for <span className="font-semibold text-[#34222e]">{vendorStore.storeName}</span> in {vendorStore.city} is currently under review by our Admin team. We'll notify you once you're approved to start selling!
+            Your vendor application for <span className="font-semibold text-[#34222e]">{vendorStore.storeName}</span> in {vendorStore.city} is currently under verification by our Admin team. You will be able to publish products once approved!
           </p>
           <button 
             onClick={() => onNavigate('catalog')}
-            className="w-full py-3 bg-[#34222e] text-white rounded-xl text-sm font-bold hover:bg-[#1f141b] transition"
+            className="w-full py-3 bg-[#34222e] text-white rounded-xl text-sm font-bold hover:bg-[#1f141b] transition cursor-pointer"
           >
             Return to Catalog
           </button>
@@ -268,7 +313,7 @@ export const VendorPortalView: React.FC<VendorPortalViewProps> = ({
               }`}
             >
               <Package className="w-4 h-4" />
-              <span>Manage Catalog ({products.length})</span>
+              <span>Manage Catalog ({vendorProducts.length})</span>
             </button>
           </div>
         </div>
@@ -278,7 +323,7 @@ export const VendorPortalView: React.FC<VendorPortalViewProps> = ({
           <div className="bg-[#fffbf7] border border-[#f9bf8f]/60 rounded-3xl p-4 shadow-xs">
             <span className="text-[11px] font-bold text-[#7a6274] block">Active Listed SKUs</span>
             <span className="text-2xl font-black text-[#34222e] mt-1 block font-mono">
-              {products.length} Items
+              {vendorProducts.length} Items
             </span>
             <span className="text-[10px] text-[#0c831f] font-semibold flex items-center gap-1 mt-1">
               <CheckCircle2 className="w-3 h-3" />
@@ -621,7 +666,7 @@ export const VendorPortalView: React.FC<VendorPortalViewProps> = ({
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#f9bf8f]/40">
               <div>
                 <h2 className="text-lg font-bold text-[#34222e]">
-                  Active Hardware Catalog ({products.length} Products)
+                  Active Hardware Catalog ({vendorProducts.length} Products)
                 </h2>
                 <p className="text-xs text-[#7a6274] mt-0.5">
                   Update inventory counts, adjust prices, or view how items appear to quick-commerce shoppers.
@@ -637,97 +682,126 @@ export const VendorPortalView: React.FC<VendorPortalViewProps> = ({
               </button>
             </div>
 
-            {/* Products Table */}
-            <div className="divide-y divide-[#f9bf8f]/30 border border-[#f9bf8f]/40 rounded-2xl overflow-hidden bg-white">
-              {vendorProducts.map((p) => (
-                <div key={p.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-[#fee9d7]/20 transition">
-                  {/* Left: Image & Info */}
-                  <div className="flex items-center space-x-3.5 min-w-0 flex-1">
-                    <div className="w-14 h-14 rounded-xl bg-white border border-[#f9bf8f]/40 p-1 shrink-0 flex items-center justify-center overflow-hidden">
-                      <img
-                        src={p.image}
-                        alt={p.name}
-                        className="max-h-full max-w-full object-contain"
-                      />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center space-x-2 text-[10px] text-[#7a6274]">
-                        <span className="font-bold text-[#e2434b] uppercase">{p.brand}</span>
-                        <span>•</span>
-                        <span className="font-mono">SKU: {p.sku}</span>
-                        <span>•</span>
-                        <span className="font-semibold text-[#34222e]">{p.category}</span>
+            {/* Products Table or Empty State */}
+            {vendorProducts.length === 0 ? (
+              <div className="p-10 text-center bg-white rounded-2xl border border-[#f9bf8f]/40 space-y-3">
+                <Package className="w-12 h-12 text-[#f9bf8f] mx-auto" />
+                <h3 className="text-sm font-bold text-[#34222e]">No Components Listed Yet</h3>
+                <p className="text-xs text-[#7a6274] max-w-sm mx-auto">
+                  Your store catalog is currently empty. Put your first microcontroller, sensor, or battery pack to start receiving orders!
+                </p>
+                <button
+                  onClick={() => setActiveTab('add_product')}
+                  className="px-4 py-2 bg-[#0c831f] text-white text-xs font-bold rounded-xl hover:bg-[#0a6e1a] transition inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>List Your First Component</span>
+                </button>
+              </div>
+            ) : (
+              <div className="divide-y divide-[#f9bf8f]/30 border border-[#f9bf8f]/40 rounded-2xl overflow-hidden bg-white">
+                {vendorProducts.map((p) => (
+                  <div key={p.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-[#fee9d7]/20 transition">
+                    {/* Left: Image & Info */}
+                    <div className="flex items-center space-x-3.5 min-w-0 flex-1">
+                      <div className="w-14 h-14 rounded-xl bg-white border border-[#f9bf8f]/40 p-1 shrink-0 flex items-center justify-center overflow-hidden">
+                        <img
+                          src={p.image}
+                          alt={p.name}
+                          className="max-h-full max-w-full object-contain"
+                        />
                       </div>
-                      <h4 className="text-xs sm:text-sm font-bold text-[#34222e] truncate mt-0.5">
-                        {p.name}
-                      </h4>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-[10px] font-bold text-[#0c831f] bg-[#f2fcf4] px-2 py-0.5 rounded border border-[#0c831f]/20">
-                          ⚡ {p.deliveryMins || 10} MINS ETA
-                        </span>
-                        <span className="text-[10px] text-[#7a6274]">
-                          HSN: {p.hsn}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Middle: Stock Controls */}
-                  <div className="flex items-center space-x-3 shrink-0">
-                    <div className="text-right">
-                      <span className="text-xs font-bold text-[#34222e] block">
-                        Stock in Dark Store
-                      </span>
-                      <div className="flex items-center space-x-1.5 mt-1">
-                        <button
-                          onClick={() => onUpdateProduct({ ...p, stock: Math.max(0, p.stock - 50) })}
-                          className="w-6 h-6 rounded bg-[#fee9d7] hover:bg-[#f9bf8f] text-[#34222e] font-bold text-xs flex items-center justify-center transition cursor-pointer"
-                          title="-50 Pcs"
-                        >
-                          -
-                        </button>
-                        <span className="font-mono font-black text-xs text-[#0c831f] w-16 text-center">
-                          {p.stock} pcs
-                        </span>
-                        <button
-                          onClick={() => onUpdateProduct({ ...p, stock: p.stock + 100 })}
-                          className="w-6 h-6 rounded bg-[#fee9d7] hover:bg-[#f9bf8f] text-[#34222e] font-bold text-xs flex items-center justify-center transition cursor-pointer"
-                          title="+100 Pcs"
-                        >
-                          +
-                        </button>
+                      <div className="min-w-0">
+                        <div className="flex items-center space-x-2 text-[10px] text-[#7a6274]">
+                          <span className="font-bold text-[#e2434b] uppercase">{p.brand}</span>
+                          <span>•</span>
+                          <span className="font-mono">SKU: {p.sku}</span>
+                          <span>•</span>
+                          <span className="font-semibold text-[#34222e]">{p.category}</span>
+                        </div>
+                        <h4 className="text-xs sm:text-sm font-bold text-[#34222e] truncate mt-0.5">
+                          {p.name}
+                        </h4>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-[10px] font-bold text-[#0c831f] bg-[#f2fcf4] px-2 py-0.5 rounded border border-[#0c831f]/20">
+                            ⚡ {p.deliveryMins || 10} MINS ETA
+                          </span>
+                          <span className="text-[10px] text-[#7a6274]">
+                            HSN: {p.hsn}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Right: Price & View Live */}
-                  <div className="flex items-center space-x-3 shrink-0 justify-between sm:justify-end border-t sm:border-t-0 pt-2 sm:pt-0 border-[#f9bf8f]/30">
-                    <div className="text-right">
-                      <span className="text-sm font-black text-[#34222e] block font-mono">
-                        ₹{p.price.toLocaleString('en-IN')}
-                      </span>
-                      {p.originalPrice && p.originalPrice > p.price && (
-                        <span className="text-[10px] text-[#7a6274] line-through block">
-                          ₹{p.originalPrice}
+                    {/* Middle: Stock Controls */}
+                    <div className="flex items-center space-x-3 shrink-0">
+                      <div className="text-right">
+                        <span className="text-xs font-bold text-[#34222e] block">
+                          Stock in Dark Store
                         </span>
-                      )}
+                        <div className="flex items-center space-x-1.5 mt-1">
+                          <button
+                            onClick={() => onUpdateProduct({ ...p, stock: Math.max(0, p.stock - 50) })}
+                            className="w-6 h-6 rounded bg-[#fee9d7] hover:bg-[#f9bf8f] text-[#34222e] font-bold text-xs flex items-center justify-center transition cursor-pointer"
+                            title="-50 Pcs"
+                          >
+                            -
+                          </button>
+                          <span className="font-mono font-black text-xs text-[#0c831f] w-16 text-center">
+                            {p.stock} pcs
+                          </span>
+                          <button
+                            onClick={() => onUpdateProduct({ ...p, stock: p.stock + 100 })}
+                            className="w-6 h-6 rounded bg-[#fee9d7] hover:bg-[#f9bf8f] text-[#34222e] font-bold text-xs flex items-center justify-center transition cursor-pointer"
+                            title="+100 Pcs"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
                     </div>
 
-                    <button
-                      onClick={() => {
-                        onSelectProduct(p);
-                        onNavigate('product');
-                      }}
-                      className="px-3 py-1.5 bg-[#fee9d7]/70 hover:bg-[#fee9d7] text-[#34222e] border border-[#f9bf8f] rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1 shadow-xs"
-                      title="View as customer"
-                    >
-                      <Eye className="w-3.5 h-3.5 text-[#0c831f]" />
-                      <span>View Live</span>
-                    </button>
+                    {/* Right: Price & View Live & Delete */}
+                    <div className="flex items-center space-x-2 shrink-0 justify-between sm:justify-end border-t sm:border-t-0 pt-2 sm:pt-0 border-[#f9bf8f]/30">
+                      <div className="text-right pr-2">
+                        <span className="text-sm font-black text-[#34222e] block font-mono">
+                          ₹{p.price.toLocaleString('en-IN')}
+                        </span>
+                        {p.originalPrice && p.originalPrice > p.price && (
+                          <span className="text-[10px] text-[#7a6274] line-through block">
+                            ₹{p.originalPrice}
+                          </span>
+                        )}
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          onSelectProduct(p);
+                          onNavigate('product');
+                        }}
+                        className="px-3 py-1.5 bg-[#fee9d7]/70 hover:bg-[#fee9d7] text-[#34222e] border border-[#f9bf8f] rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1 shadow-xs"
+                        title="View as customer"
+                      >
+                        <Eye className="w-3.5 h-3.5 text-[#0c831f]" />
+                        <span>View Live</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`Are you sure you want to remove "${p.name}" from your catalog?`)) {
+                            onDeleteProduct(p.id);
+                          }
+                        }}
+                        className="p-1.5 text-[#7a6274] hover:text-[#e2434b] hover:bg-rose-50 rounded-xl transition cursor-pointer"
+                        title="Delete component"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

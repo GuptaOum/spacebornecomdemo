@@ -213,15 +213,17 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Right Action Controls */}
           <div className="flex items-center space-x-2 sm:space-x-3 shrink-0">
             
-            {/* Seller / Vendor Hub Action */}
-            <button 
-              onClick={() => onNavigate('vendor')}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#0c831f]/30 bg-[#f2fcf4] hover:bg-[#0c831f] hover:text-white text-[#0c831f] text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
-              title="Vendor & Business Seller Hub"
-            >
-              <Store className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Seller Hub</span>
-            </button>
+            {/* Seller / Vendor Hub Action - Only visible to authenticated vendors */}
+            {user?.role === 'vendor' && (
+              <button 
+                onClick={() => onNavigate('vendor')}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#0c831f]/30 bg-[#f2fcf4] hover:bg-[#0c831f] hover:text-white text-[#0c831f] text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
+                title="Vendor & Business Seller Hub"
+              >
+                <Store className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Seller Hub</span>
+              </button>
+            )}
 
             {/* Orders Action */}
             <button 
@@ -282,9 +284,15 @@ export const Header: React.FC<HeaderProps> = ({
                         <span>Admin Product Management</span>
                       </button>
                     )}
-                    <button onClick={() => { onNavigate('vendor'); setShowAccountMenu(false); }} className="w-full text-left px-3 py-2 rounded-lg hover:bg-[#fee9d7]/50 flex items-center space-x-2.5 text-[#0c831f] text-xs font-bold cursor-pointer bg-[#f2fcf4]">
-                      <Store className="w-3.5 h-3.5 text-[#0c831f]" /> <span>Vendor / Seller Hub</span>
-                    </button>
+                    {user.role === 'vendor' ? (
+                      <button onClick={() => { onNavigate('vendor'); setShowAccountMenu(false); }} className="w-full text-left px-3 py-2 rounded-lg hover:bg-[#fee9d7]/50 flex items-center space-x-2.5 text-[#0c831f] text-xs font-bold cursor-pointer bg-[#f2fcf4]">
+                        <Store className="w-3.5 h-3.5 text-[#0c831f]" /> <span>Vendor / Seller Hub</span>
+                      </button>
+                    ) : (
+                      <button onClick={() => { onNavigate('vendor'); setShowAccountMenu(false); }} className="w-full text-left px-3 py-2 rounded-lg hover:bg-[#fee9d7]/50 flex items-center space-x-2.5 text-[#7a6274] hover:text-[#0c831f] text-xs font-medium cursor-pointer">
+                        <Store className="w-3.5 h-3.5 text-[#7a6274]" /> <span>Become a Seller Partner</span>
+                      </button>
+                    )}
                     <button onClick={() => { onNavigate('profile'); setShowAccountMenu(false); }} className="w-full text-left px-3 py-2 rounded-lg hover:bg-[#fee9d7]/50 flex items-center space-x-2.5 text-[#34222e] text-xs font-medium cursor-pointer">
                       <Settings className="w-3.5 h-3.5 text-[#7a6274]" /> <span>Account Profile</span>
                     </button>

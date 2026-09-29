@@ -162,6 +162,11 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onSelectCategory }) 
                 Bulk Orders (B2B)
               </button>
             </li>
+            <li>
+              <button onClick={() => onNavigate('vendor')} className="hover:text-[#0c831f] text-[#0c831f] font-semibold transition cursor-pointer text-left flex items-center gap-1">
+                <span>Become a Seller / Supplier Hub</span>
+              </button>
+            </li>
           </ul>
         </div>
 
