@@ -10,15 +10,15 @@ const JWKS = createRemoteJWKSet(
 );
 
 export async function middleware(req: NextRequest) {
-  // Exclude API routes, static files, and login page
-  if (req.nextUrl.pathname.startsWith('/api') || req.nextUrl.pathname.startsWith('/_next') || req.nextUrl.pathname === '/login' || req.nextUrl.pathname === '/unauthorized') {
+  // Exclude API routes, static files, login/auth page, and unauthorized page
+  if (req.nextUrl.pathname.startsWith('/api') || req.nextUrl.pathname.startsWith('/_next') || req.nextUrl.pathname === '/login' || req.nextUrl.pathname.startsWith('/auth') || req.nextUrl.pathname === '/unauthorized') {
     return NextResponse.next();
   }
 
   const sessionCookie = req.cookies.get('firebase-session')?.value;
 
   if (!sessionCookie) {
-    return NextResponse.redirect(new URL('/login', req.url));
+    return NextResponse.redirect(new URL('/auth?mode=login', req.url));
   }
 
   try {
@@ -38,7 +38,7 @@ export async function middleware(req: NextRequest) {
   } catch (error) {
     console.error('Session verification failed:', error);
     // Invalid or expired token
-    const response = NextResponse.redirect(new URL('/login', req.url));
+    const response = NextResponse.redirect(new URL('/auth?mode=login', req.url));
     response.cookies.delete('firebase-session');
     return response;
   }

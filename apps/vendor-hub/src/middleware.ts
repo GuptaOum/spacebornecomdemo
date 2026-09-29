@@ -8,14 +8,14 @@ const JWKS = createRemoteJWKSet(
 );
 
 export async function middleware(req: NextRequest) {
-  if (req.nextUrl.pathname.startsWith('/api') || req.nextUrl.pathname.startsWith('/_next') || req.nextUrl.pathname === '/login' || req.nextUrl.pathname === '/unauthorized') {
+  if (req.nextUrl.pathname.startsWith('/api') || req.nextUrl.pathname.startsWith('/_next') || req.nextUrl.pathname === '/login' || req.nextUrl.pathname.startsWith('/auth') || req.nextUrl.pathname === '/unauthorized') {
     return NextResponse.next();
   }
 
   const sessionCookie = req.cookies.get('firebase-session')?.value;
 
   if (!sessionCookie) {
-    return NextResponse.redirect(new URL('/login', req.url));
+    return NextResponse.redirect(new URL('/auth?mode=login', req.url));
   }
 
   try {
@@ -31,7 +31,7 @@ export async function middleware(req: NextRequest) {
 
     return NextResponse.next();
   } catch (error) {
-    const response = NextResponse.redirect(new URL('/login', req.url));
+    const response = NextResponse.redirect(new URL('/auth?mode=login', req.url));
     response.cookies.delete('firebase-session');
     return response;
   }
