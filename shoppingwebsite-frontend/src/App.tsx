@@ -478,7 +478,7 @@ export default function App() {
   if (appType === 'ADMIN') {
     return (
       <div className="min-h-screen bg-slate-50 antialiased font-sans">
-        <AdminProductsView onNavigate={() => {}} onCatalogChanged={() => {}} />
+        <AdminProductsView onNavigate={() => {}} onCatalogChanged={async () => {}} />
       </div>
     );
   }
