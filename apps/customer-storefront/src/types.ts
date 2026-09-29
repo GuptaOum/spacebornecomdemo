@@ -96,6 +96,7 @@ export interface VendorStore {
   status: 'pending' | 'approved' | 'rejected';
   joinedDate: string;
   gstin?: string;
+  email?: string;
 }
 
 export interface UserProfile {
