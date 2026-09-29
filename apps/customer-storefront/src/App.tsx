@@ -154,7 +154,7 @@ export default function App() {
       if (data && data.length > 0) {
         // Map Supabase columns to frontend Product format
         const mappedProducts = data.map((record: any) => {
-          const existing = PRODUCTS.find(p => p.sku === record.sku) || {};
+          const existing = PRODUCTS.find(p => p.sku === record.sku) || ({} as any);
           return {
             ...existing, // Fallback to existing mock data for missing fields like images
             id: record.id,
