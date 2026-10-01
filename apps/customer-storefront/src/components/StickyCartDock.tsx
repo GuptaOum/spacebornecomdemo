@@ -17,6 +17,20 @@ export const StickyCartDock: React.FC<StickyCartDockProps> = ({
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   const subtotal = cart.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
 
+  const [isBumping, setIsBumping] = React.useState(false);
+  const prevItemsRef = React.useRef(totalItems);
+
+  React.useEffect(() => {
+    if (totalItems !== prevItemsRef.current) {
+      prevItemsRef.current = totalItems;
+      if (totalItems > 0) {
+        setIsBumping(true);
+        const t = setTimeout(() => setIsBumping(false), 400);
+        return () => clearTimeout(t);
+      }
+    }
+  }, [totalItems]);
+
   // Free delivery threshold: ₹500
   const freeDeliveryThreshold = 500;
   const remainingForFree = Math.max(0, freeDeliveryThreshold - subtotal);
@@ -35,7 +49,7 @@ export const StickyCartDock: React.FC<StickyCartDockProps> = ({
             <div className="w-10 h-10 rounded-xl bg-white/20 border border-white/30 flex items-center justify-center text-white">
               <ShoppingBag className="w-5 h-5" />
             </div>
-            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#f8cb46] text-[#34222e] font-mono text-[9.5px] font-black flex items-center justify-center shadow-xs">
+            <span className={`absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#f8cb46] text-[#34222e] font-mono text-[9.5px] font-black flex items-center justify-center shadow-xs transition-transform ${isBumping ? 'animate-badge-bump scale-125' : ''}`}>
               {totalItems}
             </span>
           </div>

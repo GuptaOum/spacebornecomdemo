@@ -17,6 +17,7 @@ yarn-error.log*
 
 # Environment & secrets
 .env
+.env.render
 .env.local
 .env.development.local
 .env.test.local
@@ -36,3 +37,24 @@ fix_all.py
 
 # TypeScript
 *.tsbuildinfo
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+tfplan
+*.tfplan
+
+.uploads/
+
+# Editor and local tooling metadata
+.vscode/
+.idea/
+CLAUDE.md
+AGENTS.md
+app.log
+.cursor/
+mcp.json

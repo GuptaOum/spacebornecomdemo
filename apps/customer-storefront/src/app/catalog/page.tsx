@@ -13,6 +13,7 @@ export default function CatalogPage() {
     selectedCategory,
     setSelectedCategory,
     searchQuery,
+    setSearchQuery,
     addToCart,
     setSelectedProduct,
     setQuickViewProduct,
@@ -23,12 +24,19 @@ export default function CatalogPage() {
     router.push(`/product/${prod.id}`);
   };
 
+  const handleClearSearch = () => {
+    setSearchQuery('');
+    setSelectedCategory('All Categories');
+  };
+
   return (
     <CatalogView
       products={products}
       selectedCategory={selectedCategory}
       onSelectCategory={setSelectedCategory}
       searchQuery={searchQuery}
+      onSearchChange={setSearchQuery}
+      onClearSearch={handleClearSearch}
       onSelectProduct={handleSelectProduct}
       onAddToCart={addToCart}
       onQuickView={setQuickViewProduct}

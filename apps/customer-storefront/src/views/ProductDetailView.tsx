@@ -288,6 +288,13 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
                     <ShieldCheck className="w-4 h-4 text-[#0c831f]" />
                     <span>100% Genuine Certified</span>
                   </span>
+
+                  {(product.isChoice || product.badge === 'Spaceborn Choice' || product.badge === "Spaceborn's Choice") && (
+                    <span className="inline-flex items-center gap-1.5 bg-[#1e293b] text-[#f8cb46] font-black px-3 py-1 rounded-xl border border-[#f8cb46]/40 shadow-xs uppercase tracking-wider text-xs">
+                      <span>⭐</span>
+                      <span>Spaceborn's Choice</span>
+                    </span>
+                  )}
                 </div>
               </div>
 

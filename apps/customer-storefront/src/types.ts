@@ -40,6 +40,7 @@ export interface Product {
   datasheetUrl?: string;
   cadModelUrl?: string;
   badge?: string;
+  isChoice?: boolean;
   deliveryMins?: number; // e.g. 10 or 15 mins
   packSize?: string; // e.g. '1 Unit', 'Pack of 2', '100g'
   flashDeal?: boolean;

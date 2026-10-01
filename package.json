@@ -1,0 +1,35 @@
+{
+  "name": "spaceborn",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "services/*",
+    "apps/*"
+  ],
+  "dependencies": {
+    "@tailwindcss/postcss": "^4.1.0",
+    "tailwindcss": "^4.1.0",
+    "typescript": "^5.8.0"
+  },
+  "scripts": {
+    "dev:api": "npm run dev -w @spaceborn/api",
+    "dev:worker": "npm run dev:worker -w @spaceborn/api",
+    "dev:storefront": "npm run dev -w customer-storefront",
+    "dev:vendor": "npm run dev -w vendor-hub",
+    "dev:admin": "npm run dev -w admin-panel",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present",
+    "start": "node scripts/render-gateway.mjs",
+    "render:build:api": "npm run build -w @spaceborn/web-core && npm run build -w @spaceborn/api",
+    "render:start:api": "npm run start -w @spaceborn/api",
+    "render:build:storefront": "npm run build -w @spaceborn/web-core && npm run build -w customer-storefront",
+    "render:start:storefront": "npx next start apps/customer-storefront -p ${PORT:-3000}",
+    "render:build:vendor": "npm run build -w @spaceborn/web-core && npm run build -w vendor-hub",
+    "render:start:vendor": "npx next start apps/vendor-hub -p ${PORT:-3001}",
+    "render:build:admin": "npm run build -w @spaceborn/web-core && npm run build -w admin-panel",
+    "render:start:admin": "npx next start apps/admin-panel -p ${PORT:-3002}",
+    "render:build:unified": "npm run build -w @spaceborn/web-core && npm run build -w @spaceborn/api && npm run build -w customer-storefront && npm run build -w vendor-hub && npm run build -w admin-panel",
+    "render:start:unified": "node scripts/render-gateway.mjs"
+  }
+}

@@ -1,27 +1,65 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Product, CartItem, UserProfile, Order, GstDetails } from '../types';
-import { PRODUCTS, INITIAL_ORDERS } from '../data/products';
-import { apiRequest } from '../lib/api';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { api } from '@spaceborn/web-core/api';
+import { useAuth } from '@spaceborn/web-core/auth';
+import type { CatalogOffer, GeoPoint, NearbyStore } from '@spaceborn/web-core/types';
+import type { CartItem, GstDetails, Product, UserProfile } from '../types';
+import { INITIAL_PRODUCTS } from '../data/products';
+
+export interface DeliveryLocation {
+  label: string;
+  area: string;
+  pincode: string;
+  latitude: number;
+  longitude: number;
+}
+
+export const LOCATION_PRESETS: DeliveryLocation[] = [
+  { label: 'Kanpur', area: 'Mall Road, Kanpur', pincode: '208001', latitude: 26.4499, longitude: 80.3319 },
+  { label: 'Bengaluru', area: 'Koramangala 4th Block', pincode: '560034', latitude: 12.9352, longitude: 77.6245 },
+  { label: 'Chennai', area: 'Parrys Corner, Chennai', pincode: '600001', latitude: 13.0827, longitude: 80.2707 },
+  { label: 'Pune', area: 'Shivajinagar, Pune', pincode: '411005', latitude: 18.5308, longitude: 73.8475 },
+  { label: 'Delhi', area: 'Connaught Place', pincode: '110001', latitude: 28.6315, longitude: 77.2167 },
+];
+
+export type CatalogStatus = 'loading' | 'ready' | 'unserviceable' | 'error';
+export type SearchStatus = 'idle' | 'loading' | 'ready' | 'error';
+
+const SEARCH_DEBOUNCE_MS = 300;
+
+/** What the customer sees about their delivery area. Individual vendors are chosen by the server. */
+export interface ServiceArea {
+  nearbyStores: number;
+  /** Fastest ETA among nearby stores, for the header badge. */
+  etaMinutes: number | null;
+  nearest: NearbyStore | null;
+}
 
 interface StoreContextType {
-  // Products
   products: Product[];
   selectedCategory: string;
   setSelectedCategory: (cat: string) => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
+  /** Ranked server results for `searchQuery` near the delivery location; null while not searching or on error. */
+  searchResults: Product[] | null;
+  searchStatus: SearchStatus;
   selectedProduct: Product | null;
   setSelectedProduct: (product: Product | null) => void;
   quickViewProduct: Product | null;
   setQuickViewProduct: (product: Product | null) => void;
-  addProduct: (product: Product) => void;
-  updateProduct: (product: Product) => void;
-  deleteProduct: (id: string) => void;
+
+  location: DeliveryLocation;
+  setLocation: (location: DeliveryLocation) => void;
+  locateMe: () => Promise<void>;
+  locateByPincode: (pincode: string) => Promise<void>;
+  searchPlaces: (query: string) => Promise<DeliveryLocation[]>;
+  serviceArea: ServiceArea;
+  catalogStatus: CatalogStatus;
+  catalogError: string | null;
   refreshCatalog: () => Promise<void>;
 
-  // Cart
   cart: CartItem[];
   isCartDrawerOpen: boolean;
   openCart: () => void;
@@ -31,23 +69,13 @@ interface StoreContextType {
   removeFromCart: (productId: string) => void;
   clearCart: () => void;
 
-  // User & Auth
+  authLoading: boolean;
   currentUser: UserProfile | null;
-  setCurrentUser: (user: UserProfile | null) => void;
-  loginUser: (user: UserProfile) => void;
+  setCurrentUser: (user: UserProfile) => void;
   logoutUser: () => void;
   gstDetails: GstDetails;
   setGstDetails: (details: GstDetails) => void;
 
-  // Location
-  selectedCity: string;
-  setSelectedCity: (city: string) => void;
-
-  // Orders
-  orders: Order[];
-  addOrder: (order: Order) => void;
-
-  // Wishlist & Compare
   wishlist: Product[];
   addToWishlist: (product: Product) => void;
   removeFromWishlist: (productId: string) => void;
@@ -59,361 +87,337 @@ interface StoreContextType {
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
-const MOCK_VENDORS = [
-  { id: 'v-1', name: 'ElectroHub', city: 'Bangalore', rating: 4.8, deliveryMins: 12 },
-  { id: 'v-2', name: 'TechComponents', city: 'Pune', rating: 4.5, deliveryMins: 15 },
-  { id: 'v-3', name: 'Kanpur Robotics', city: 'Kanpur', rating: 4.9, deliveryMins: 10 },
-  { id: 'v-4', name: 'Delhi Makers', city: 'Delhi', rating: 4.2, deliveryMins: 20 },
-  { id: 'v-5', name: 'Chennai Electronics', city: 'Chennai', rating: 4.7, deliveryMins: 14 }
-];
+const PLACEHOLDER_IMAGE = '/spaceborn-logo.svg';
+const MAX_PER_LINE = 50;
 
-// Instead of simple round-robin, we duplicate the catalog for the top 3 cities so they all have inventory!
-// This makes the app actually "work" when you switch cities, showing distinct local stores.
-const ENRICHED_PRODUCTS: Product[] = [];
-const TARGET_CITIES = ['Kanpur', 'Bangalore', 'Pune'];
+const KEYS = {
+  cart: 'spaceborn_cart_v3',
+  location: 'spaceborn_location_v2',
+  wishlist: 'spaceborn_wishlist',
+  profile: (uid: string) => `spaceborn_profile_${uid}`,
+};
 
-PRODUCTS.forEach((product) => {
-  TARGET_CITIES.forEach((city) => {
-    const localVendor = MOCK_VENDORS.find(v => v.city === city)!;
-    // slightly randomize prices and stock per vendor to make it feel like a real marketplace
-    const localPriceOffset = Math.floor(Math.random() * 20) - 10;
-    
-    ENRICHED_PRODUCTS.push({
-      ...product,
-      id: `${product.id}-${localVendor.id}`, // Unique ID per vendor listing
-      vendorId: localVendor.id,
-      vendorName: localVendor.name,
-      city: localVendor.city,
-      price: product.price + localPriceOffset,
-      stock: Math.floor(Math.random() * 50) + 5,
-      deliveryMins: localVendor.deliveryMins,
-      rating: localVendor.rating
-    });
-  });
-});
+function readJson<T>(key: string): T | null {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : null;
+  } catch {
+    return null;
+  }
+}
+
+function toProduct(p: CatalogOffer): Product {
+  return {
+    id: p.id,
+    vendorId: p.storeId,
+    vendorName: p.storeName,
+    city: p.storeCity,
+    name: p.name,
+    sku: p.sku,
+    category: p.categoryName,
+    subCategory: '',
+    price: p.price,
+    originalPrice: p.mrp > p.price ? p.mrp : undefined,
+    hsn: '',
+    gstRate: p.gstRate,
+    stock: p.stock,
+    rating: 0,
+    reviewsCount: 0,
+    image: p.imageUrl ?? PLACEHOLDER_IMAGE,
+    description: p.description,
+    features: [],
+    brand: p.brand ?? '',
+    packageIncludes: [],
+    specifications: p.specs ?? {},
+    deliveryMins: p.etaMinutes,
+    badge: p.isChoice ? 'Spaceborn Choice' : p.offerCount > 1 ? `${p.offerCount} stores nearby` : undefined,
+    isChoice: p.isChoice,
+  };
+}
+
+const EMPTY_GST: GstDetails = { enabled: false, gstin: '', legalName: '', stateCode: '', verified: false };
+const EMPTY_AREA: ServiceArea = { nearbyStores: 0, etaMinutes: null, nearest: null };
+
+interface StoredCart {
+  items: CartItem[];
+}
 
 export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  // Products Catalog State
-  const [products, setProducts] = useState<Product[]>(ENRICHED_PRODUCTS);
-  const [selectedCategory, setSelectedCategory] = useState<string>('All Categories');
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [selectedCity, setSelectedCity] = useState<string>('Kanpur');
+  const auth = useAuth();
+
+  const [location, setLocationState] = useState<DeliveryLocation>(LOCATION_PRESETS[0]);
+  const [serviceArea, setServiceArea] = useState<ServiceArea>(EMPTY_AREA);
+  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
+  const [catalogStatus, setCatalogStatus] = useState<CatalogStatus>('loading');
+  const [catalogError, setCatalogError] = useState<string | null>(null);
+
+  const [selectedCategory, setSelectedCategory] = useState('All Categories');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const handleSetSearchQuery = useCallback((query: string) => {
+    setSearchQuery(query);
+    // Real-world quick commerce UX: searching must search across entire catalog by default,
+    // not remain locked into a previously selected category (e.g. "motors").
+    if (query.trim().length > 0 && selectedCategory !== 'All Categories') {
+      setSelectedCategory('All Categories');
+    }
+  }, [selectedCategory]);
+
+  const [searchResults, setSearchResults] = useState<Product[] | null>(null);
+  const [searchStatus, setSearchStatus] = useState<SearchStatus>('idle');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
 
-  // Cart State
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const [cart, setCart] = useState<StoredCart>({ items: [] });
   const [isCartDrawerOpen, setIsCartDrawerOpen] = useState(false);
 
-  // User & Auth State
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
-  const [gstDetails, setGstDetails] = useState<GstDetails>({
-    enabled: true,
-    legalName: 'Apex Robotics Labs LLP',
-    gstin: '29AABCA9482Q1Z7',
-    pan: 'AABCA9482Q',
-    stateCode: '29',
-    verified: true,
-  });
+  const [profileOverrides, setProfileOverrides] = useState<Partial<UserProfile>>({});
+  const [gstDetails, setGstDetails] = useState<GstDetails>(EMPTY_GST);
 
-  // Orders
-  const [orders, setOrders] = useState<Order[]>(INITIAL_ORDERS);
-
-  // Wishlist & Compare
   const [wishlist, setWishlist] = useState<Product[]>([]);
   const [compareList, setCompareList] = useState<Product[]>([]);
 
-  // Hydrate client-side localStorage safely
+  const [hydrated, setHydrated] = useState(false);
+
   useEffect(() => {
+    const savedLocation = readJson<DeliveryLocation>(KEYS.location);
+    if (savedLocation) setLocationState(savedLocation);
+    const savedCart = readJson<StoredCart>(KEYS.cart);
+    if (savedCart?.items) setCart(savedCart);
+    const savedWishlist = readJson<Product[]>(KEYS.wishlist);
+    if (savedWishlist) setWishlist(savedWishlist);
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (hydrated) localStorage.setItem(KEYS.cart, JSON.stringify(cart));
+  }, [cart, hydrated]);
+
+  useEffect(() => {
+    if (!auth.user) {
+      setProfileOverrides({});
+      return;
+    }
+    setProfileOverrides(readJson<Partial<UserProfile>>(KEYS.profile(auth.user.uid)) ?? {});
+  }, [auth.user?.uid]);
+
+  const loadCatalog = useCallback(async (loc: DeliveryLocation) => {
+    setCatalogStatus('loading');
+    setCatalogError(null);
     try {
-      // Products
-      const savedProducts = localStorage.getItem('spaceborn_custom_products');
-      if (savedProducts) {
-        const parsed = JSON.parse(savedProducts);
-        setProducts([...parsed, ...PRODUCTS]);
-      } else {
-        setProducts(PRODUCTS);
+      const at = `lat=${loc.latitude}&lng=${loc.longitude}`;
+      const [nearby, catalog] = await Promise.all([
+        api<{ stores: NearbyStore[] }>(`/stores/nearby?${at}`),
+        api<{ products: CatalogOffer[]; nearbyStores: number; serviceable: boolean }>(`/catalog/products?${at}&limit=100`),
+      ]);
+      const nearest = nearby.stores[0] ?? null;
+      setServiceArea({ nearbyStores: catalog.nearbyStores, etaMinutes: nearest?.etaMinutes ?? null, nearest });
+      if (!catalog.serviceable) {
+        setProducts([]);
+        setCatalogStatus('unserviceable');
+        return;
       }
-
-      // Cart
-      const savedCart = localStorage.getItem('spaceborn_cart_items') || localStorage.getItem('robu_cart_items');
-      if (savedCart) {
-        setCart(JSON.parse(savedCart));
-      } else {
-        setCart([
-          {
-            product: PRODUCTS[0],
-            quantity: 2,
-            unitPrice: PRODUCTS[0].price,
-          },
-        ]);
-      }
-
-      // User
-      const savedUser = localStorage.getItem('spaceborn_user_session');
-      if (savedUser) {
-        const parsed = JSON.parse(savedUser);
-        setCurrentUser(parsed);
-        if (parsed.gstDetails) setGstDetails(parsed.gstDetails);
-      } else {
-        setCurrentUser(null);
-      }
-
-      // Wishlist
-      const savedWishlist = localStorage.getItem('spaceborn_wishlist');
-      if (savedWishlist) setWishlist(JSON.parse(savedWishlist));
-    } catch (e) {
-      console.warn('Could not read from localStorage', e);
+      setProducts(catalog.products.map(toProduct));
+      setCatalogStatus('ready');
+    } catch (err) {
+      setCatalogError((err as Error).message);
+      setCatalogStatus('error');
+      setProducts((curr) => (curr.length === 0 ? INITIAL_PRODUCTS : curr));
     }
   }, []);
 
-  // Save Cart to Local Storage and Supabase
-  const [cartId, setCartId] = useState<string | null>(null);
-
-  // 1. On Mount: Fetch Cart from Supabase
   useEffect(() => {
-    const initSupabaseCart = async () => {
+    if (hydrated) void loadCatalog(location);
+  }, [location, loadCatalog, hydrated]);
+
+  // The server ranks by keywords and meaning, and only returns what nearby stores stock.
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (!hydrated || q.length < 2 || catalogStatus !== 'ready') {
+      setSearchResults(null);
+      setSearchStatus('idle');
+      return;
+    }
+    let cancelled = false;
+    setSearchStatus('loading');
+    const timer = setTimeout(async () => {
       try {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('spaceborn_access_token') : null;
-        if (!token) return;
-        const res = await fetch('/api/cart', { headers: { 'Authorization': 'Bearer ' + JSON.parse(token) } });
-        const data = await res.json();
-        if (data.cartId) {
-          setCartId(data.cartId);
-          if (data.items) setCart(data.items.map((item: any) => ({
-              product: { id: item.product.id, name: item.product.name, sku: item.product.sku, price: Number(item.product.price) },
-              quantity: item.quantity,
-              unitPrice: Number(item.product.price)
-          })));
-        }
-      } catch (e) { console.warn('Failed to sync initial cart from API', e); }
+        const at = `lat=${location.latitude}&lng=${location.longitude}`;
+        const res = await api<{ products: CatalogOffer[] }>(`/catalog/products?${at}&q=${encodeURIComponent(q)}&limit=60`);
+        if (cancelled) return;
+        setSearchResults(res.products.map(toProduct));
+        setSearchStatus('ready');
+      } catch {
+        if (cancelled) return;
+        setSearchResults(null);
+        setSearchStatus('error');
+      }
+    }, SEARCH_DEBOUNCE_MS);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
     };
-    initSupabaseCart();
-  }, [currentUser?.id]);
+  }, [searchQuery, location, catalogStatus, hydrated]);
 
-  // 2. On Change: Push Cart to Supabase
-  useEffect(() => {
-    if (typeof window !== 'undefined' && cart.length >= 0) {
-      try {
-        localStorage.setItem('spaceborn_cart_items', JSON.stringify(cart));
-      } catch (e) {
-        console.warn('Could not save cart locally', e);
-      }
+  const setLocation = (loc: DeliveryLocation) => {
+    localStorage.setItem(KEYS.location, JSON.stringify(loc));
+    setLocationState(loc);
+  };
 
-      if (cartId) {
-        const syncToCloud = async () => {
-          try {
-            const token = typeof window !== 'undefined' ? localStorage.getItem('spaceborn_access_token') : null;
-            if (!token) return;
-            await fetch('/api/cart', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + JSON.parse(token) },
-              body: JSON.stringify({ cartId, items: cart })
-            });
-          } catch (e) { console.error('API cart sync error', e); }
-        };
-        void syncToCloud();
-      }
-    }
-  }, [cart, cartId]);
+  const locateMe = () =>
+    new Promise<void>((resolve, reject) => {
+      if (!navigator.geolocation) return reject(new Error('Location is not supported on this device.'));
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setLocation({
+            label: 'Current location',
+            area: 'Near you',
+            pincode: '',
+            latitude: Number(pos.coords.latitude.toFixed(6)),
+            longitude: Number(pos.coords.longitude.toFixed(6)),
+          });
+          resolve();
+        },
+        () => reject(new Error('Location permission was denied.')),
+        { timeout: 10_000 },
+      );
+    });
 
-  // Save User
-  useEffect(() => {
-    if (typeof window !== 'undefined' && currentUser) {
-      try {
-        localStorage.setItem('spaceborn_user_session', JSON.stringify(currentUser));
-      } catch (e) {
-        console.warn('Could not save user', e);
-      }
-    }
-  }, [currentUser]);
+  const locateByPincode = async (pincode: string) => {
+    const { location: found } = await api<{ location: GeoPoint }>(`/geo/pincode/${pincode.trim()}`);
+    setLocation(found);
+  };
 
-  // Cart operations
-  const openCart = () => setIsCartDrawerOpen(true);
-  const closeCart = () => setIsCartDrawerOpen(false);
+  const searchPlaces = async (query: string) => {
+    const { results } = await api<{ results: GeoPoint[] }>(`/geo/search?q=${encodeURIComponent(query.trim())}`);
+    return results;
+  };
 
+  // Prices shown in the cart are refreshed from the live catalog; the server re-prices at checkout anyway.
+  const cartItems = useMemo(
+    () =>
+      cart.items.map((item) => {
+        const live = products.find((p) => p.id === item.product.id);
+        return live ? { ...item, product: live, unitPrice: live.price } : item;
+      }),
+    [cart.items, products],
+  );
+
+  // The cart is a list of products, not a store's basket: the server picks the vendor at checkout.
   const addToCart = (product: Product, quantity = 1) => {
     setCart((prev) => {
-      const existing = prev.find((item) => item.product.id === product.id);
-      if (existing) {
-        return prev.map((item) =>
-          item.product.id === product.id
-            ? { ...item, quantity: item.quantity + quantity }
-            : item
-        );
-      }
-      return [...prev, { product, quantity, unitPrice: product.price }];
+      const existing = prev.items.find((i) => i.product.id === product.id);
+      const limit = Math.min(product.stock, MAX_PER_LINE);
+      const next = existing
+        ? prev.items.map((i) => (i.product.id === product.id ? { ...i, quantity: Math.min(limit, i.quantity + quantity) } : i))
+        : [...prev.items, { product, quantity: Math.min(limit, quantity), unitPrice: product.price }];
+      return { items: next.filter((i) => i.quantity > 0) };
     });
     setIsCartDrawerOpen(true);
   };
 
-  const updateQuantity = (productId: string, quantity: number) => {
-    if (quantity <= 0) {
-      removeFromCart(productId);
-      return;
-    }
-    setCart((prev) =>
-      prev.map((item) =>
-        item.product.id === productId ? { ...item, quantity } : item
-      )
-    );
-  };
+  const updateQuantity = (productId: string, quantity: number) =>
+    setCart((prev) => ({
+      ...prev,
+      items:
+        quantity <= 0
+          ? prev.items.filter((i) => i.product.id !== productId)
+          : prev.items.map((i) =>
+              i.product.id === productId ? { ...i, quantity: Math.min(quantity, MAX_PER_LINE, i.product.stock || MAX_PER_LINE) } : i,
+            ),
+    }));
 
-  const removeFromCart = (productId: string) => {
-    setCart((prev) => prev.filter((item) => item.product.id !== productId));
-  };
+  const removeFromCart = (productId: string) =>
+    setCart((prev) => ({ ...prev, items: prev.items.filter((i) => i.product.id !== productId) }));
 
-  const clearCart = () => {
-    setCart([]);
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('spaceborn_cart_items');
-    }
-  };
+  const clearCart = () => setCart((prev) => ({ ...prev, items: [] }));
 
-  // Vendor product operations
-  const addProduct = (newProd: Product) => {
-    setProducts((prev) => {
-      const next = [newProd, ...prev];
-      if (typeof window !== 'undefined') {
-        try {
-          const customOnly = next.filter((p) => !PRODUCTS.some((init) => init.id === p.id));
-          localStorage.setItem('spaceborn_custom_products', JSON.stringify(customOnly));
-        } catch (e) {
-          console.warn('Could not save custom product', e);
-        }
-      }
-      return next;
-    });
-  };
+  const currentUser = useMemo<UserProfile | null>(() => {
+    if (!auth.user) return null;
+    return {
+      id: auth.user.uid,
+      role: auth.user.role,
+      fullName: auth.user.name || auth.user.email?.split('@')[0] || 'Spaceborn user',
+      email: auth.user.email ?? '',
+      phone: '',
+      accountType: 'individual',
+      addresses: [],
+      joinedDate: '',
+      ...profileOverrides,
+    };
+  }, [auth.user, profileOverrides]);
 
-  const updateProduct = (updated: Product) => {
-    setProducts((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
-  };
-
-  const deleteProduct = (id: string) => {
-    setProducts((prev) => prev.filter((p) => p.id !== id));
-  };
-
-  const refreshCatalog = async () => {
-    try {
-      const result = await apiRequest<{ products: any[] }>('/products?limit=100&sortBy=newest');
-      if (result.products?.length) {
-        // Map backend products if available
-      }
-    } catch (e) {
-      console.warn('Using bundled catalog:', e);
+  const setCurrentUser = (updated: UserProfile) => {
+    if (!auth.user) return;
+    const { id: _id, role: _role, email: _email, ...editable } = updated;
+    localStorage.setItem(KEYS.profile(auth.user.uid), JSON.stringify(editable));
+    setProfileOverrides(editable);
+    if (updated.fullName || updated.phone) {
+      void api('/me', {
+        method: 'PATCH',
+        body: {
+          fullName: updated.fullName || undefined,
+          phone: /^[6-9]\d{9}$/.test(updated.phone.replace(/\D/g, '').slice(-10)) ? updated.phone.replace(/\D/g, '').slice(-10) : undefined,
+        },
+      }).catch(() => undefined);
     }
   };
 
-  // Auth operations
-  const loginUser = (user: UserProfile) => {
-    setCurrentUser(user);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('spaceborn_user_session', JSON.stringify(user));
-    }
+  const persistWishlist = (next: Product[]) => {
+    localStorage.setItem(KEYS.wishlist, JSON.stringify(next));
+    return next;
   };
 
-  const logoutUser = () => {
-    setCurrentUser(null);
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('spaceborn_user_session');
-      localStorage.removeItem('spaceborn_access_token');
-    }
+  const value: StoreContextType = {
+    products,
+    selectedCategory,
+    setSelectedCategory,
+    searchQuery,
+    setSearchQuery: handleSetSearchQuery,
+    searchResults,
+    searchStatus,
+    selectedProduct,
+    setSelectedProduct,
+    quickViewProduct,
+    setQuickViewProduct,
+    location,
+    setLocation,
+    locateMe,
+    locateByPincode,
+    searchPlaces,
+    serviceArea,
+    catalogStatus,
+    catalogError,
+    refreshCatalog: () => loadCatalog(location),
+    cart: cartItems,
+    isCartDrawerOpen,
+    openCart: () => setIsCartDrawerOpen(true),
+    closeCart: () => setIsCartDrawerOpen(false),
+    addToCart,
+    updateQuantity,
+    removeFromCart,
+    clearCart,
+    authLoading: auth.loading,
+    currentUser,
+    setCurrentUser,
+    logoutUser: () => void auth.signOut(),
+    gstDetails,
+    setGstDetails,
+    wishlist,
+    addToWishlist: (product) =>
+      setWishlist((prev) => (prev.some((p) => p.id === product.id) ? prev : persistWishlist([...prev, product]))),
+    removeFromWishlist: (productId) => setWishlist((prev) => persistWishlist(prev.filter((p) => p.id !== productId))),
+    compareList,
+    addToCompare: (product) => setCompareList((prev) => (prev.some((p) => p.id === product.id) ? prev : [...prev, product])),
+    removeFromCompare: (productId) => setCompareList((prev) => prev.filter((p) => p.id !== productId)),
+    clearCompare: () => setCompareList([]),
   };
 
-  // Orders
-  const addOrder = (order: Order) => {
-    setOrders((prev) => [order, ...prev]);
-  };
-
-  // Wishlist
-  const addToWishlist = (product: Product) => {
-    setWishlist((prev) => {
-      if (prev.some((p) => p.id === product.id)) return prev;
-      const next = [...prev, product];
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('spaceborn_wishlist', JSON.stringify(next));
-      }
-      return next;
-    });
-  };
-
-  const removeFromWishlist = (productId: string) => {
-    setWishlist((prev) => {
-      const next = prev.filter((p) => p.id !== productId);
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('spaceborn_wishlist', JSON.stringify(next));
-      }
-      return next;
-    });
-  };
-
-  // Compare
-  const addToCompare = (product: Product) => {
-    setCompareList((prev) => (prev.some((p) => p.id === product.id) ? prev : [...prev, product]));
-  };
-
-  const removeFromCompare = (productId: string) => {
-    setCompareList((prev) => prev.filter((p) => p.id !== productId));
-  };
-
-  const clearCompare = () => setCompareList([]);
-
-  // Derived products based on city
-  const visibleProducts = products.filter(p => !p.city || p.city === selectedCity);
-
-  return (
-    <StoreContext.Provider
-      value={{
-        products: visibleProducts,
-        selectedCategory,
-        setSelectedCategory,
-        searchQuery,
-        setSearchQuery,
-        selectedCity,
-        setSelectedCity,
-        selectedProduct,
-        setSelectedProduct,
-        quickViewProduct,
-        setQuickViewProduct,
-        addProduct,
-        updateProduct,
-        deleteProduct,
-        refreshCatalog,
-        cart,
-        isCartDrawerOpen,
-        openCart,
-        closeCart,
-        addToCart,
-        updateQuantity,
-        removeFromCart,
-        clearCart,
-        currentUser,
-        setCurrentUser,
-        loginUser,
-        logoutUser,
-        gstDetails,
-        setGstDetails,
-        orders,
-        addOrder,
-        wishlist,
-        addToWishlist,
-        removeFromWishlist,
-        compareList,
-        addToCompare,
-        removeFromCompare,
-        clearCompare,
-      }}
-    >
-      {children}
-    </StoreContext.Provider>
-  );
+  return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 };
 
 export const useStore = () => {
   const context = useContext(StoreContext);
-  if (!context) {
-    throw new Error('useStore must be used within a StoreProvider');
-  }
+  if (!context) throw new Error('useStore must be used within a StoreProvider');
   return context;
 };

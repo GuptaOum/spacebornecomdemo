@@ -20,6 +20,17 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 }) => {
   const [quantity, setQuantity] = useState(cartQuantity);
   const [isAdded, setIsAdded] = useState(cartQuantity > 0);
+  const [imgSrc, setImgSrc] = useState(product.image || '/spaceborn-logo.svg');
+  const [isPopping, setIsPopping] = useState(false);
+
+  const triggerPop = () => {
+    setIsPopping(true);
+    setTimeout(() => setIsPopping(false), 350);
+  };
+
+  useEffect(() => {
+    setImgSrc(product.image || '/spaceborn-logo.svg');
+  }, [product.image]);
 
   useEffect(() => {
     setQuantity(cartQuantity);
@@ -28,6 +39,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
   const handleAdd = (e: React.MouseEvent) => {
     e.stopPropagation();
+    triggerPop();
     setIsAdded(true);
     setQuantity(1);
     onAddToCart(product, 1);
@@ -36,6 +48,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const handleIncrement = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (quantity < product.stock) {
+      triggerPop();
       const next = quantity + 1;
       setQuantity(next);
       onAddToCart(product, next);
@@ -79,13 +92,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   return (
     <article 
       onClick={() => onSelect(product)}
-      className="bg-[#fffbf7] border border-[#f9bf8f]/60 hover:border-[#0c831f] hover:shadow-md rounded-2xl p-2.5 sm:p-3 transition-all duration-200 flex flex-col justify-between group overflow-hidden cursor-pointer relative shadow-xs"
+      className="bg-[#fffbf7] border border-[#f9bf8f]/60 hover:border-[#059669] hover:shadow-lg rounded-2xl p-2.5 sm:p-3 transition-all duration-200 flex flex-col justify-between group overflow-hidden cursor-pointer relative shadow-xs"
     >
       {/* Top Badges Row */}
       <div className="flex items-center justify-between mb-1.5 relative z-10">
         {/* Delivery ETA Badge */}
-        <span className="inline-flex items-center gap-1 text-[10.5px] font-black text-[#0c831f] uppercase tracking-wide">
-          <Zap className="w-3 h-3 fill-[#0c831f]" />
+        <span className="inline-flex items-center gap-1 text-[10px] font-black text-[#059669] uppercase tracking-wide bg-[#ecfdf5] border border-[#10b981]/20 px-1.5 py-0.5 rounded-md">
+          <Zap className="w-2.5 h-2.5 fill-[#059669]" />
           <span>{deliveryTime} MINS</span>
         </span>
 
@@ -100,7 +113,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           {/* Quick View Button */}
           <button
             onClick={handleQuickViewClick}
-            className="w-6 h-6 rounded-full bg-white/90 text-[#34222e]/60 hover:text-[#e2434b] hover:bg-white flex items-center justify-center transition opacity-0 group-hover:opacity-100 cursor-pointer shadow-xs border border-[#f9bf8f]/40"
+            className="w-6 h-6 rounded-full bg-white/95 text-[#34222e]/60 hover:text-[#e2434b] hover:bg-white flex items-center justify-center transition opacity-0 group-hover:opacity-100 cursor-pointer shadow-xs border border-[#f9bf8f]/40"
             title="Quick View"
           >
             <Eye className="w-3.5 h-3.5" />
@@ -110,47 +123,54 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
       {/* Product Image on Clean Light Canvas */}
       <div className="w-full h-36 rounded-xl bg-white border border-[#f9bf8f]/30 flex items-center justify-center p-2 mb-2 overflow-hidden relative">
-        <img 
-          src={product.image} 
+        <img
+          src={imgSrc}
           alt={product.name}
           className="max-h-full max-w-full object-contain transition-transform duration-300 ease-out group-hover:scale-110 will-change-transform"
           loading="lazy"
+          onError={() => setImgSrc('/spaceborn-logo.svg')}
         />
+        {(product.isChoice || product.badge === 'Spaceborn Choice' || product.badge === "Spaceborn's Choice") && (
+          <span className="absolute bottom-1.5 left-1.5 z-10 inline-flex items-center gap-1 bg-[#1e293b]/95 backdrop-blur-xs text-[#f8cb46] text-[8.5px] font-black px-1.5 py-0.5 rounded shadow-xs border border-[#f8cb46]/40 uppercase tracking-wider">
+            <span>⭐</span> Spaceborn's Choice
+          </span>
+        )}
       </div>
 
       {/* Product Info */}
       <div className="flex-1 flex flex-col justify-between">
         <div>
-          {/* Category / Brand Tag */}
+          {/* Robu-Style Category / Brand & Rating Tag */}
           <div className="flex items-center justify-between text-[10px] text-[#34222e]/60 font-medium mb-0.5">
-            <span className="truncate max-w-[120px] font-bold text-[#e2434b] uppercase tracking-wider">{product.brand}</span>
+            <span className="truncate max-w-[120px] font-bold text-[#e2434b] uppercase tracking-wider">{product.brand || product.category}</span>
             <span className="flex items-center gap-0.5 font-bold text-[#34222e]/80">
               <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-              <span>{product.rating}</span>
+              <span>{product.rating || '4.8'}</span>
             </span>
           </div>
 
-          {/* Title: 2-line clamped like Blinkit */}
-          <h3 className="text-xs font-bold text-[#34222e] line-clamp-2 leading-snug group-hover:text-[#e2434b] transition-colors mb-1">
+          {/* Title: 2-line clamped */}
+          <h3 className="text-xs font-bold text-[#34222e] line-clamp-2 leading-snug group-hover:text-[#e2434b] transition-colors mb-1 min-h-[32px]">
             {product.name}
           </h3>
 
-          {/* Vendor Badge */}
-          {product.vendorName && (
-            <div className="flex items-center gap-1 mb-1.5">
-              <span className="text-[9px] font-bold text-[#0c831f] bg-[#f2fcf4] border border-[#0c831f]/20 px-1.5 py-0.5 rounded shadow-xs truncate max-w-full">
-                By {product.vendorName} • {product.city || 'Local'}
+          {/* Robu-Style SKU Line */}
+          <div className="flex items-center justify-between text-[9.5px] text-[#7a6274] font-mono mb-1">
+            <span>SKU: {product.sku}</span>
+            {product.vendorName && (
+              <span className="text-[#059669] font-medium truncate max-w-[100px]">
+                {product.city || 'Express'}
               </span>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Clean Technical Spec Line */}
-          <p className="text-[11px] font-medium text-[#34222e]/70 truncate mb-2">
+          <p className="text-[10.5px] font-medium text-[#34222e]/70 truncate mb-2">
             {specSummary}
           </p>
         </div>
 
-        {/* Pricing & Iconic Blinkit ADD / Stepper Button */}
+        {/* Pricing & Robu-styled Add to Cart Button */}
         <div className="pt-2 border-t border-[#f9bf8f]/30 flex items-center justify-between mt-auto">
           <div className="flex flex-col">
             <div className="flex items-baseline space-x-1">
@@ -168,19 +188,24 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             </span>
           </div>
 
-          {/* Dynamic Stepper Button (Blinkit Style) */}
-          <div onClick={(e) => e.stopPropagation()} className="shrink-0 w-[72px] h-8">
+          {/* Dynamic Stepper Button with Soft Green */}
+          <div onClick={(e) => e.stopPropagation()} className="shrink-0 w-[74px] h-8">
             {product.stock > 0 ? (
               !isAdded || quantity === 0 ? (
                 <button
                   type="button"
                   onClick={handleAdd}
-                  className="w-[72px] h-8 rounded-lg border-2 border-[#0c831f] text-[#0c831f] bg-[#f2fcf4] hover:bg-[#0c831f] hover:text-white font-black text-[11px] uppercase tracking-wider transition-all flex items-center justify-center shadow-xs cursor-pointer active:scale-95"
+                  className={`w-[74px] h-8 rounded-lg border-2 border-[#059669] text-[#059669] bg-[#ecfdf5] hover:bg-[#059669] hover:text-white font-black text-[11px] uppercase tracking-wider transition-all flex items-center justify-center gap-1 shadow-xs cursor-pointer active:scale-95 ${
+                    isPopping ? 'animate-btn-pop' : ''
+                  }`}
                 >
-                  ADD
+                  <span>ADD</span>
+                  <Plus className="w-3 h-3 stroke-[3]" />
                 </button>
               ) : (
-                <div className="w-[72px] h-8 rounded-lg bg-[#0c831f] text-white flex items-center justify-between px-1.5 font-bold text-xs shadow-sm shadow-[#0c831f]/30 animate-in zoom-in-95 duration-150">
+                <div className={`w-[74px] h-8 rounded-lg bg-[#059669] text-white flex items-center justify-between px-1.5 font-bold text-xs shadow-sm shadow-[#059669]/30 animate-in zoom-in-95 duration-150 ${
+                  isPopping ? 'animate-btn-pop' : ''
+                }`}>
                   <button 
                     type="button"
                     onClick={handleDecrement}

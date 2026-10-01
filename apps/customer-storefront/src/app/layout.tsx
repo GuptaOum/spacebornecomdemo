@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import Script from 'next/script';
-import { AuthProvider } from '../context/AuthContext';
+import { AuthProvider } from '@spaceborn/web-core/auth';
 import { StoreProvider } from '../context/StoreContext';
 import { NextAppShell } from '../components/NextAppShell';
 
@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   description: 'Ultra-fast electronics quick commerce. High-grade microcontrollers, sensors, motors, batteries, and robotics kits delivered in 10-15 minutes across Kanpur, Bengaluru, Noida, Pune, Delhi & Chennai.',
   keywords: ['electronics', 'robotics', 'arduino', 'raspberry pi', 'esp32', 'sensors', 'quick commerce', 'blinkit for electronics'],
   icons: {
-    icon: '/spaceborn-logo.png',
+    icon: '/spaceborn-logo.svg',
   },
   openGraph: {
     title: 'Spaceborn Express - 10-Minute Electronics & Robotics Dispatch',

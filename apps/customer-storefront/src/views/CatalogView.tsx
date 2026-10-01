@@ -1,8 +1,9 @@
 'use client';
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Product } from '../types';
 import { ProductCard } from '../components/ProductCard';
-import { CATEGORIES } from '../data/products';
+import { CATEGORIES, matchCategory, isCategoryActive } from '../data/products';
+import { useStore } from '../context/StoreContext';
 import { 
   SlidersHorizontal, 
   ChevronRight, 
@@ -21,7 +22,8 @@ import {
   Layers,
   Box,
   ShieldCheck,
-  Wrench
+  Wrench,
+  X
 } from 'lucide-react';
 
 interface CatalogViewProps {
@@ -32,19 +34,26 @@ interface CatalogViewProps {
   selectedCategory: string;
   onSelectCategory: (cat: string) => void;
   searchQuery: string;
+  onSearchChange?: (q: string) => void;
+  onClearSearch?: () => void;
 }
 
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   'All Categories': <LayoutGrid className="w-4 h-4" />,
-  'Motors & Drivers': <Zap className="w-4 h-4" />,
+  'Dev Boards & MCUs': <Cpu className="w-4 h-4" />,
   'Development Boards': <Cpu className="w-4 h-4" />,
   'Sensors & Modules': <Compass className="w-4 h-4" />,
+  'Motors & Drivers': <Zap className="w-4 h-4" />,
+  'Batteries & Power': <Battery className="w-4 h-4" />,
   'Batteries & Chargers': <Battery className="w-4 h-4" />,
   'DIY Kits': <Flame className="w-4 h-4" />,
   '3D Printing & CNC': <Layers className="w-4 h-4" />,
   'Robotics & Mechanical': <Box className="w-4 h-4" />,
+  'Mechanical & Frames': <Box className="w-4 h-4" />,
   'Components & Hardware': <ShieldCheck className="w-4 h-4" />,
+  'Components': <ShieldCheck className="w-4 h-4" />,
   'Tools & Soldering': <Wrench className="w-4 h-4" />,
+  'Tools & Accessories': <Wrench className="w-4 h-4" />,
 };
 
 export const CatalogView: React.FC<CatalogViewProps> = ({
@@ -55,7 +64,13 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
   selectedCategory,
   onSelectCategory,
   searchQuery: initialSearchQuery,
+  onSearchChange,
+  onClearSearch,
 }) => {
+  const { searchResults, searchStatus } = useStore();
+  // Server results are already ranked by relevance; the local token filter is only a fallback.
+  const serverRanked = initialSearchQuery.trim().length > 1 && searchResults !== null;
+
   // Filter state
   const [selectedSubCategory, setSelectedSubCategory] = useState<string>('All');
   const [inStockOnly, setInStockOnly] = useState(false);
@@ -67,12 +82,39 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
 
+  const handleClearSearch = () => {
+    if (onClearSearch) {
+      onClearSearch();
+    } else if (onSearchChange) {
+      onSearchChange('');
+      onSelectCategory('All Categories');
+    } else {
+      onSelectCategory('All Categories');
+    }
+    setSelectedSubCategory('All');
+  };
+
+  // When a new search query is initiated, search across entire catalog by default
+  const prevSearchRef = useRef(initialSearchQuery);
+  useEffect(() => {
+    if (initialSearchQuery !== prevSearchRef.current) {
+      prevSearchRef.current = initialSearchQuery;
+      if (initialSearchQuery.trim().length > 0 && selectedCategory !== 'All Categories') {
+        onSelectCategory('All Categories');
+      }
+      setSelectedSubCategory('All');
+    }
+  }, [initialSearchQuery, selectedCategory, onSelectCategory]);
+
   // Dynamic category product counts
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = { 'All Categories': products.length };
-    products.forEach(p => {
-      const cat = p.category === 'Components' ? 'Components & Hardware' : p.category;
-      counts[cat] = (counts[cat] || 0) + 1;
+    CATEGORIES.forEach(cat => {
+      if (cat.id === 'all') {
+        counts[cat.name] = products.length;
+      } else {
+        counts[cat.name] = products.filter(p => matchCategory(p.category, cat.name)).length;
+      }
     });
     return counts;
   }, [products]);
@@ -81,8 +123,7 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
   const availableSubCategories = useMemo(() => {
     const subs = new Set<string>();
     products.forEach(p => {
-      const norm = (c: string) => c === 'Components' ? 'Components & Hardware' : c;
-      if (selectedCategory === 'All Categories' || selectedCategory === 'all' || norm(p.category) === norm(selectedCategory)) {
+      if (selectedCategory === 'All Categories' || selectedCategory === 'all' || matchCategory(p.category, selectedCategory)) {
         if (p.subCategory) subs.add(p.subCategory);
       }
     });
@@ -121,11 +162,11 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
 
   // Filter and sort products
   const filteredProducts = useMemo(() => {
-    return products.filter(p => {
+    const source = serverRanked ? searchResults! : products;
+    return source.filter(p => {
       // Category match
       if (selectedCategory !== 'All Categories' && selectedCategory !== 'all') {
-        const norm = (c: string) => c === 'Components' ? 'Components & Hardware' : c;
-        if (norm(p.category) !== norm(selectedCategory)) return false;
+        if (!matchCategory(p.category, selectedCategory)) return false;
       }
 
       // Subcategory match
@@ -133,14 +174,40 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
         if (p.subCategory !== selectedSubCategory) return false;
       }
 
-      // Search match
-      if (initialSearchQuery.trim()) {
-        const q = initialSearchQuery.toLowerCase();
-        const matches = p.name.toLowerCase().includes(q) ||
-          p.sku.toLowerCase().includes(q) ||
-          p.description.toLowerCase().includes(q) ||
-          p.category.toLowerCase().includes(q);
-        if (!matches) return false;
+      // Local fallback when the server search is unavailable
+      if (!serverRanked && initialSearchQuery.trim()) {
+        const q = initialSearchQuery.toLowerCase().trim();
+        const tokens = q.split(/\s+/).filter(Boolean);
+
+        // Domain-specific robotics & electronics synonyms
+        const synonyms: Record<string, string[]> = {
+          '3d': ['3d', 'printer', 'filament', 'creality', 'ender', 'resin', 'nozzle', 'pla', 'fdm', 'sla'],
+          'cnc': ['cnc', 'laser', 'engraver', 'cutting', 'milling', 'atomstack', 'heatsink', 'drill', 'spindle'],
+          'laser': ['laser', 'engraver', 'cutter', 'cnc', 'atomstack'],
+          'drone': ['drone', 'motor', 'bldc', 'propeller', 'esc', 'flysky', 'quadcopter', 'hobbywing'],
+          'motor': ['motor', 'bldc', 'stepper', 'servo', 'rpm', 'driver', 'torque'],
+          'battery': ['battery', 'lipo', 'lithium', 'bms', 'charger', 'mah', 'cell', 'power'],
+          'board': ['board', 'mcu', 'arduino', 'esp32', 'raspberry', 'pi', 'microcontroller', 'uno'],
+          'sensor': ['sensor', 'module', 'ultrasonic', 'gyro', 'camera', 'lidar', 'distance'],
+        };
+
+        const terms = new Set<string>(tokens);
+        for (const t of tokens) {
+          if (synonyms[t]) {
+            synonyms[t].forEach(s => terms.add(s));
+          }
+        }
+
+        const corpus = `${p.name} ${p.sku} ${p.category} ${p.subCategory || ''} ${p.brand || ''} ${p.description || ''} ${p.voltage || ''} ${p.rpm || ''}`.toLowerCase();
+
+        // Exact substring match
+        if (corpus.includes(q)) {
+          // match
+        } else {
+          // Token or synonym match
+          const hasMatch = Array.from(terms).some(term => corpus.includes(term));
+          if (!hasMatch) return false;
+        }
       }
 
       // In stock
@@ -175,6 +242,8 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
     });
   }, [
     products, 
+    serverRanked,
+    searchResults,
     selectedCategory, 
     initialSearchQuery, 
     selectedSubCategory, 
@@ -233,6 +302,70 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
           </div>
         </div>
 
+        {/* Quick-Commerce Category Pills / Chips Rail (Blinkit / Robu / Amazon style) */}
+        <div className="mb-6 bg-[#fffbf7] rounded-3xl border border-[#f9bf8f]/60 p-3 sm:p-4 shadow-xs">
+          <div className="flex items-center justify-between mb-2.5 px-1">
+            <span className="text-xs font-bold text-[#34222e] flex items-center gap-1.5 uppercase tracking-wider">
+              <LayoutGrid className="w-3.5 h-3.5 text-[#0c831f]" />
+              <span>Browse Categories</span>
+            </span>
+            {selectedCategory !== 'All Categories' && (
+              <button
+                type="button"
+                onClick={() => {
+                  onSelectCategory('All Categories');
+                  setSelectedSubCategory('All');
+                }}
+                className="text-[11px] font-bold text-[#e2434b] hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                <RotateCcw className="w-3 h-3" />
+                <span>Show All Categories</span>
+              </button>
+            )}
+          </div>
+          
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-none py-1">
+            {CATEGORIES.map((cat) => {
+              const isActive = isCategoryActive(cat.name, selectedCategory);
+              const count = categoryCounts[cat.name] ?? 0;
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => {
+                    if (isActive && cat.id !== 'all') {
+                      onSelectCategory('All Categories');
+                    } else {
+                      onSelectCategory(cat.name);
+                    }
+                    setSelectedSubCategory('All');
+                  }}
+                  className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-xs font-semibold whitespace-nowrap transition-all duration-150 cursor-pointer shrink-0 select-none ${
+                    isActive
+                      ? 'bg-[#0c831f] text-white shadow-xs font-bold'
+                      : 'bg-[#fee9d7]/50 hover:bg-[#fee9d7] border border-[#f9bf8f]/60 text-[#34222e]'
+                  }`}
+                >
+                  <span className={isActive ? 'text-white' : 'text-[#e2434b]'}>
+                    {CATEGORY_ICONS[cat.name] || <Box className="w-3.5 h-3.5" />}
+                  </span>
+                  <span>{cat.name}</span>
+                  {count > 0 && (
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ml-0.5 ${
+                      isActive ? 'bg-white/20 text-white' : 'bg-[#fffbf7] text-[#7a6274] border border-[#f9bf8f]/40'
+                    }`}>
+                      {count}
+                    </span>
+                  )}
+                  {isActive && cat.id !== 'all' && (
+                    <X className="w-3 h-3 ml-0.5 text-white/80 hover:text-white" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Catalog Main Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           
@@ -246,7 +379,7 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
                   <LayoutGrid className="w-3.5 h-3.5 text-[#e2434b]" />
                   <span>Categories</span>
                 </span>
-                <span className="text-[10px] font-bold text-[#0c831f] bg-[#f2fcf4] px-2 py-0.5 rounded-full border border-[#0c831f]/20">
+                <span className="text-[10px] font-bold text-[#059669] bg-[#ecfdf5] px-2 py-0.5 rounded-full border border-[#059669]/20">
                   {products.length} Items
                 </span>
               </div>
@@ -254,18 +387,23 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
               {/* Vertical Category Aisles */}
               <div className="space-y-1">
                 {CATEGORIES.map((cat) => {
-                  const isActive = selectedCategory === cat.name;
+                  const isActive = isCategoryActive(cat.name, selectedCategory);
                   const count = categoryCounts[cat.name] || 0;
                   return (
                     <button
                       key={cat.id}
+                      type="button"
                       onClick={() => {
-                        onSelectCategory(cat.name);
+                        if (isActive && cat.id !== 'all') {
+                          onSelectCategory('All Categories');
+                        } else {
+                          onSelectCategory(cat.name);
+                        }
                         setSelectedSubCategory('All');
                       }}
                       className={`w-full flex items-center justify-between px-3 py-2 rounded-2xl text-xs transition-all duration-150 cursor-pointer ${
                         isActive
-                          ? 'bg-[#0c831f] text-white shadow-xs font-bold'
+                          ? 'bg-[#059669] text-white shadow-xs font-bold'
                           : 'text-[#34222e] hover:bg-[#fee9d7]/70 font-semibold'
                       }`}
                     >
@@ -275,11 +413,16 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
                         </span>
                         <span className="truncate">{cat.name}</span>
                       </div>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ml-1 shrink-0 ${
-                        isActive ? 'bg-white/20 text-white' : 'bg-[#fee9d7] text-[#7a6274]'
-                      }`}>
-                        {count}
-                      </span>
+                      <div className="flex items-center gap-1 shrink-0 ml-1">
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                          isActive ? 'bg-white/20 text-white' : 'bg-[#fee9d7] text-[#7a6274]'
+                        }`}>
+                          {count}
+                        </span>
+                        {isActive && cat.id !== 'all' && (
+                          <X className="w-3 h-3 text-white/80 hover:text-white" />
+                        )}
+                      </div>
                     </button>
                   );
                 })}
@@ -397,6 +540,64 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
           {/* Right Product Grid Column */}
           <main className="lg:col-span-9 space-y-4">
             
+            {/* Semantic Search Result Callout Banner */}
+            {initialSearchQuery.trim() && (
+              <div className="bg-[#ecfdf5] border border-[#10b981]/30 rounded-2xl p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs animate-in fade-in duration-200">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-[#d1fae5] text-[#059669] flex items-center justify-center shrink-0 shadow-xs">
+                    <Search className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[#34222e] font-medium">Search results for</span>
+                      <strong className="text-[#059669] font-bold text-sm">"{initialSearchQuery}"</strong>
+                      {selectedCategory !== 'All Categories' && (
+                        <span className="inline-flex items-center gap-1 text-[11px] bg-[#d1fae5] text-[#065f46] px-2 py-0.5 rounded-full font-semibold">
+                          in {selectedCategory}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onSelectCategory('All Categories');
+                              setSelectedSubCategory('All');
+                            }}
+                            title="Remove category filter"
+                            className="hover:text-red-600 cursor-pointer ml-0.5"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[#7a6274] text-[11px] block mt-0.5">
+                      {searchStatus === 'loading' ? 'Searching entire catalog…' : `${filteredProducts.length} item${filteredProducts.length === 1 ? '' : 's'} found`}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {selectedCategory !== 'All Categories' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onSelectCategory('All Categories');
+                        setSelectedSubCategory('All');
+                      }}
+                      className="px-2.5 py-1.5 rounded-xl bg-white border border-[#10b981]/30 text-[#0c831f] hover:bg-[#d1fae5]/40 text-xs font-bold transition cursor-pointer"
+                    >
+                      All Categories
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleClearSearch}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white border border-red-200 text-[#e2434b] hover:bg-rose-50 text-xs font-bold transition shadow-xs cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    <span>Clear Search</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Controls Bar */}
             <div className="bg-[#fffbf7] rounded-2xl border border-[#f9bf8f]/60 p-3.5 flex items-center justify-between shadow-xs">
               
@@ -499,14 +700,45 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
                 </div>
                 <h3 className="text-sm font-bold text-[#34222e]">No products found</h3>
                 <p className="text-xs text-[#7a6274] max-w-sm mx-auto">
-                  Try adjusting your filters or price range to find matching components.
+                  {initialSearchQuery.trim()
+                    ? `No components or hardware found matching "${initialSearchQuery}".`
+                    : 'Try adjusting your filters or price range to find matching components.'}
                 </p>
-                <button
-                  onClick={clearAllFilters}
-                  className="mt-2 inline-flex items-center px-4 py-2 bg-[#0c831f] hover:bg-[#0a6e1a] text-white text-xs font-bold rounded-xl transition cursor-pointer"
-                >
-                  Reset All Filters
-                </button>
+                <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+                  {initialSearchQuery.trim() && (
+                    <button
+                      type="button"
+                      onClick={handleClearSearch}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#0c831f] hover:bg-[#0a6e1a] text-white text-xs font-bold rounded-xl transition cursor-pointer shadow-xs"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      <span>Clear Search Query</span>
+                    </button>
+                  )}
+                  {selectedCategory !== 'All Categories' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onSelectCategory('All Categories');
+                        setSelectedSubCategory('All');
+                      }}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-white border border-[#f9bf8f]/70 hover:bg-[#fee9d7]/50 text-[#34222e] text-xs font-bold rounded-xl transition cursor-pointer"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>Show All Categories</span>
+                    </button>
+                  )}
+                  {hasActiveFilters && (
+                    <button
+                      type="button"
+                      onClick={clearAllFilters}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-white border border-[#f9bf8f]/70 hover:bg-[#fee9d7]/50 text-[#34222e] text-xs font-bold rounded-xl transition cursor-pointer"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>Reset Filters</span>
+                    </button>
+                  )}
+                </div>
               </div>
             ) : viewMode === 'grid' ? (
               <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">

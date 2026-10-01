@@ -68,7 +68,8 @@ export const INITIAL_PRODUCTS: Product[] = [
     ],
     datasheetUrl: 'https://spaceborn.in/wp-content/uploads/2026/datasheets/N20-12V-300RPM-Encoder-DS.pdf',
     cadModelUrl: 'https://spaceborn.in/wp-content/uploads/2026/cad/N20_Gearmotor_Assembly.step',
-    badge: 'Best Seller'
+    badge: 'Spaceborn Choice',
+    isChoice: true,
   },
   {
     id: 'esp32-wroom-32d',
@@ -108,7 +109,8 @@ export const INITIAL_PRODUCTS: Product[] = [
     packageIncludes: [
       '1 x ESP32-WROOM-32D SMD Wireless Microcontroller Module'
     ],
-    badge: 'Popular'
+    badge: 'Spaceborn Choice',
+    isChoice: true,
   },
   {
     id: 'a4988-stepper-driver',
@@ -357,7 +359,9 @@ export const INITIAL_PRODUCTS: Product[] = [
     packageIncludes: [
       '1 x Arduino Uno R3 Compatible Board',
       '1 x Blue High-Speed USB Cable (50cm)'
-    ]
+    ],
+    badge: 'Spaceborn Choice',
+    isChoice: true,
   },
   {
     id: 'smart-car-4wd-kit',
@@ -712,7 +716,8 @@ export const INITIAL_PRODUCTS: Product[] = [
       'Power': '5V/5A DC via USB-C PD'
     },
     packageIncludes: ['1 x Raspberry Pi 5 Model B 8GB Development Board'],
-    badge: 'Flagship'
+    badge: 'Spaceborn Choice',
+    isChoice: true,
   },
   {
     id: 'arduino-uno-r4-wifi',
@@ -1062,18 +1067,50 @@ export const INITIAL_PRODUCTS: Product[] = [
   },
 ];
 
-export const CATEGORIES = [
-  { id: 'all', name: 'All Categories', count: 1840 },
-  { id: 'motors-drivers', name: 'Motors & Drivers', count: 420 },
-  { id: 'dev-boards', name: 'Development Boards', count: 315 },
-  { id: 'sensors-modules', name: 'Sensors & Modules', count: 380 },
-  { id: 'batteries-chargers', name: 'Batteries & Chargers', count: 190 },
-  { id: 'diy-kits', name: 'DIY Kits', count: 145 },
-  { id: '3d-printing', name: '3D Printing & CNC', count: 185 },
-  { id: 'robotics-mechanical', name: 'Robotics & Mechanical', count: 260 },
-  { id: 'components', name: 'Components & Hardware', count: 450 },
-  { id: 'tools-soldering', name: 'Tools & Soldering', count: 120 }
+export interface CategoryDefinition {
+  id: string;
+  name: string;
+  count: number;
+  aliases: string[];
+}
+
+export const CATEGORIES: CategoryDefinition[] = [
+  { id: 'all', name: 'All Categories', count: 0, aliases: ['all', 'all categories', 'all items', 'all products'] },
+  { id: 'dev-boards', name: 'Dev Boards & MCUs', count: 0, aliases: ['dev boards & mcus', 'development boards', 'dev boards', 'mcus', 'controllers', 'microcontrollers'] },
+  { id: 'sensors', name: 'Sensors & Modules', count: 0, aliases: ['sensors & modules', 'sensors', 'modules'] },
+  { id: 'motors', name: 'Motors & Drivers', count: 0, aliases: ['motors & drivers', 'motors', 'drivers', 'motor drivers'] },
+  { id: 'power', name: 'Batteries & Power', count: 0, aliases: ['batteries & power', 'batteries & chargers', 'batteries', 'power', 'chargers'] },
+  { id: 'mechanical', name: 'Robotics & Mechanical', count: 0, aliases: ['robotics & mechanical', 'mechanical & frames', 'mechanical', 'structural', 'frames', 'robotics'] },
+  { id: 'tools', name: 'Tools & Soldering', count: 0, aliases: ['tools & soldering', 'tools & accessories', 'tools', 'soldering', 'accessories'] },
+  { id: '3d-printing', name: '3D Printing & CNC', count: 0, aliases: ['3d printing & cnc', '3d printing', 'cnc', 'print & cnc'] },
+  { id: 'components', name: 'Components & Hardware', count: 0, aliases: ['components & hardware', 'components', 'hardware'] },
+  { id: 'diy-kits', name: 'DIY Kits', count: 0, aliases: ['diy kits', 'diy', 'kits'] },
 ];
+
+export function getCategoryCanonicalId(categoryName: string): string {
+  const norm = (categoryName || '').trim().toLowerCase();
+  if (!norm || norm === 'all' || norm === 'all categories' || norm === 'all items' || norm === 'all products') {
+    return 'all';
+  }
+  for (const cat of CATEGORIES) {
+    if (cat.name.toLowerCase() === norm || cat.id.toLowerCase() === norm) return cat.id;
+    if (cat.aliases.some(alias => alias === norm || norm.includes(alias) || alias.includes(norm))) {
+      return cat.id;
+    }
+  }
+  return norm;
+}
+
+export function matchCategory(productCategory: string, filterCategory: string): boolean {
+  const targetId = getCategoryCanonicalId(filterCategory);
+  if (targetId === 'all') return true;
+  const prodId = getCategoryCanonicalId(productCategory);
+  return prodId === targetId;
+}
+
+export function isCategoryActive(categoryName: string, selectedCategory: string): boolean {
+  return getCategoryCanonicalId(categoryName) === getCategoryCanonicalId(selectedCategory);
+}
 
 export const MOTOR_SUBCATEGORIES = [
   'Micro Metal N20',
