@@ -63,25 +63,45 @@ function spawnService(name, command, args, envVars = {}) {
     stdio: ['ignore', 'pipe', 'pipe'],
   });
 
+  const serviceObj = {
+    name,
+    command,
+    args,
+    envVars,
+    process: child,
+    status: 'running',
+    startedAt: new Date().toISOString(),
+    logs: [],
+  };
+
   child.stdout.on('data', (data) => {
     const lines = data.toString().trim().split('\n');
     for (const line of lines) {
-      if (line.trim()) log(name, line);
+      if (line.trim()) {
+        log(name, line);
+        serviceObj.logs.push(`[${new Date().toISOString().substring(11, 19)}] ${line}`);
+        if (serviceObj.logs.length > 50) serviceObj.logs.shift();
+      }
     }
   });
 
   child.stderr.on('data', (data) => {
     const lines = data.toString().trim().split('\n');
     for (const line of lines) {
-      if (line.trim()) log(name, `ERR: ${line}`);
+      if (line.trim()) {
+        log(name, `ERR: ${line}`);
+        serviceObj.logs.push(`[${new Date().toISOString().substring(11, 19)}] ERR: ${line}`);
+        if (serviceObj.logs.length > 50) serviceObj.logs.shift();
+      }
     }
   });
 
   child.on('exit', (code, signal) => {
+    serviceObj.status = `exited (${code})`;
     log('supervisor', `${name} exited with code ${code} signal ${signal}`);
   });
 
-  children.push({ name, process: child });
+  children.push(serviceObj);
   return child;
 }
 
@@ -153,6 +173,25 @@ function startGateway() {
     if (url.pathname === '/__portal' || url.pathname === '/_hub') {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       res.end(renderPortalHtml(host));
+      return;
+    }
+
+    // Diagnostics endpoint: /__status
+    if (url.pathname === '/__status') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        gateway: 'Spaceborn Unified Supervisor',
+        version: 'v1.0.4-standalone',
+        uptimeSeconds: Math.round(process.uptime()),
+        timestamp: new Date().toISOString(),
+        services: children.map(c => ({
+          name: c.name,
+          port: c.envVars.PORT,
+          status: c.status,
+          pid: c.process?.pid,
+          recentLogs: c.logs.slice(-10),
+        })),
+      }, null, 2));
       return;
     }
 
@@ -299,13 +338,16 @@ function proxyRequest(req, res, targetPort) {
 
   proxy.on('error', (err) => {
     if (!res.headersSent) {
+      const targetService = children.find((c) => String(c.envVars?.PORT) === String(targetPort));
+      const logLines = targetService?.logs?.slice(-6)?.join('\n') || 'Service process has not written any output yet.';
       res.writeHead(503, { 'Content-Type': 'text/html; charset=utf-8' });
       res.end(`
-        <div style="font-family:sans-serif;padding:40px;text-align:center;line-height:1.6">
-          <h2 style="color:#e11d48">⚡ Spaceborn Service Starting Up...</h2>
-          <p>The service on port <b>${targetPort}</b> is initializing. This takes 5-15 seconds on initial free tier wake-up.</p>
+        <div style="font-family:sans-serif;padding:40px;text-align:center;line-height:1.6;background:#090d16;color:#f1f5f9;min-height:100vh">
+          <h2 style="color:#e11d48">⚡ Spaceborn Service on Port ${targetPort} is Offline or Initializing</h2>
+          <p style="color:#94a3b8">The service on port <b>${targetPort}</b> (${targetService?.name || 'app'}) status is: <b>${targetService?.status || 'starting'}</b>.</p>
+          <pre style="text-align:left;background:#1e293b;color:#38bdf8;padding:16px;border-radius:8px;max-width:750px;margin:20px auto;overflow:auto;font-size:12px;border:1px solid #334155;white-space:pre-wrap;">${logLines}</pre>
           <p><a href="${req.url}" style="display:inline-block;margin-top:12px;padding:8px 18px;background:#2563eb;color:#fff;border-radius:6px;text-decoration:none">Click to Refresh</a></p>
-          <small style="color:#64748b">Gateway Port: ${GATEWAY_PORT} | Target Port: ${targetPort}</small>
+          <p style="margin-top:16px"><a href="/__status" style="color:#64748b;text-decoration:underline">Inspect Live Diagnostics (/__status)</a></p>
         </div>
       `);
     }
@@ -455,13 +497,18 @@ async function main() {
   function getAppSpawnConfig(appName, port) {
     const standaloneAppPath = path.join(ROOT_DIR, 'apps', appName, '.next', 'standalone', 'apps', appName, 'server.js');
     const standaloneDirectPath = path.join(ROOT_DIR, 'apps', appName, '.next', 'standalone', 'server.js');
-    if (fs.existsSync(standaloneAppPath)) {
-      log('supervisor', `Using Next.js standalone server for ${appName}`);
-      return { cmd: nodeCmd, args: [standaloneAppPath] };
-    }
-    if (fs.existsSync(standaloneDirectPath)) {
-      log('supervisor', `Using Next.js standalone root server for ${appName}`);
-      return { cmd: nodeCmd, args: [standaloneDirectPath] };
+    const rootStandaloneAppPath = path.join(ROOT_DIR, '.next', 'standalone', 'apps', appName, 'server.js');
+    const rootStandalonePath = path.join(ROOT_DIR, '.next', 'standalone', 'server.js');
+
+    let targetScript = null;
+    if (fs.existsSync(standaloneAppPath)) targetScript = standaloneAppPath;
+    else if (fs.existsSync(standaloneDirectPath)) targetScript = standaloneDirectPath;
+    else if (fs.existsSync(rootStandaloneAppPath)) targetScript = rootStandaloneAppPath;
+    else if (fs.existsSync(rootStandalonePath)) targetScript = rootStandalonePath;
+
+    if (targetScript) {
+      log('supervisor', `Using Next.js standalone server for ${appName}: ${targetScript}`);
+      return { cmd: nodeCmd, args: [targetScript] };
     }
     log('supervisor', `Using standard next start for ${appName}`);
     return { cmd: npxCmd, args: ['next', 'start', `apps/${appName}`, '-p', String(port)] };
