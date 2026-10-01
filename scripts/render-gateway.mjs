@@ -54,7 +54,7 @@ function getMemoryLimit(name) {
 
 function spawnService(name, command, args, envVars = {}) {
   const defaultMemory = getMemoryLimit(name);
-  const nodeOptions = envVars.NODE_OPTIONS || process.env.NODE_OPTIONS || `--max-old-space-size=${defaultMemory} --optimize-for-size`;
+  const nodeOptions = envVars.NODE_OPTIONS || process.env.NODE_OPTIONS || `--max-old-space-size=${defaultMemory}`;
   const childEnv = {
     ...process.env,
     PORT: envVars.PORT,
