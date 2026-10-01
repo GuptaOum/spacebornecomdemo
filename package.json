@@ -6,6 +6,11 @@
     "services/*",
     "apps/*"
   ],
+  "dependencies": {
+    "@tailwindcss/postcss": "^4.1.0",
+    "tailwindcss": "^4.1.0",
+    "typescript": "^5.8.0"
+  },
   "scripts": {
     "dev:api": "npm run dev -w @spaceborn/api",
     "dev:worker": "npm run dev:worker -w @spaceborn/api",
