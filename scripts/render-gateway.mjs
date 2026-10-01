@@ -208,6 +208,44 @@ function startGateway() {
       return;
     }
 
+    // Direct Static Assets Serving: /_next/static/*
+    if (url.pathname.startsWith('/_next/static/')) {
+      const subPath = url.pathname.replace(/^\/_next\/static\//, '');
+      const apps = ['customer-storefront', 'vendor-hub', 'admin-panel'];
+      for (const a of apps) {
+        const fullPath = path.join(ROOT_DIR, 'apps', a, '.next', 'static', subPath);
+        if (fs.existsSync(fullPath)) {
+          const ext = path.extname(fullPath).toLowerCase();
+          const mimeTypes = {
+            '.css': 'text/css; charset=utf-8',
+            '.js': 'application/javascript; charset=utf-8',
+            '.json': 'application/json',
+            '.png': 'image/png',
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.svg': 'image/svg+xml',
+            '.webp': 'image/webp',
+            '.woff2': 'font/woff2',
+            '.woff': 'font/woff',
+            '.ttf': 'font/ttf',
+          };
+          res.writeHead(200, {
+            'Content-Type': mimeTypes[ext] || 'application/octet-stream',
+            'Cache-Control': 'public, max-age=31536000, immutable',
+          });
+          fs.createReadStream(fullPath).pipe(res);
+          return;
+        }
+      }
+    }
+
+    // Referer hint for subresources without explicit query param or cookie
+    const referer = req.headers['referer'] || '';
+    let refererApp = null;
+    if (referer.includes('app=admin') || referer.includes('/admin')) refererApp = 'admin';
+    else if (referer.includes('app=vendor') || referer.includes('/vendor')) refererApp = 'vendor';
+    else if (referer.includes('app=store')) refererApp = 'store';
+
     // Query param override: ?app=admin | ?app=vendor | ?app=store
     let appParam = url.searchParams.get('app');
     if (appParam) {
@@ -215,9 +253,9 @@ function startGateway() {
     }
 
     // Target service resolution:
-    // Priority: Query param -> Subdomain -> Path prefix alias -> Cookie -> Default (Storefront)
+    // Priority: Query param -> Subdomain -> Path prefix alias -> Cookie -> Referer -> Default (Storefront)
     let targetPort = STORE_PORT;
-    const cookieApp = appParam || cookies.spaceborn_app;
+    const cookieApp = appParam || cookies.spaceborn_app || refererApp;
 
     if (host.startsWith('admin.') || cookieApp === 'admin') {
       targetPort = ADMIN_PORT;
@@ -482,6 +520,30 @@ function shutdown() {
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 
+function syncStandaloneAssets() {
+  const apps = ['customer-storefront', 'vendor-hub', 'admin-panel'];
+  for (const app of apps) {
+    const srcStatic = path.join(ROOT_DIR, 'apps', app, '.next', 'static');
+    const destStatic = path.join(ROOT_DIR, 'apps', app, '.next', 'standalone', 'apps', app, '.next', 'static');
+    const srcPublic = path.join(ROOT_DIR, 'apps', app, 'public');
+    const destPublic = path.join(ROOT_DIR, 'apps', app, '.next', 'standalone', 'apps', app, 'public');
+
+    try {
+      if (fs.existsSync(srcStatic)) {
+        fs.mkdirSync(path.dirname(destStatic), { recursive: true });
+        fs.cpSync(srcStatic, destStatic, { recursive: true, force: true });
+        log('supervisor', `Synced static assets for ${app}`);
+      }
+      if (fs.existsSync(srcPublic)) {
+        fs.mkdirSync(path.dirname(destPublic), { recursive: true });
+        fs.cpSync(srcPublic, destPublic, { recursive: true, force: true });
+      }
+    } catch (e) {
+      log('supervisor', `Asset sync notice for ${app}: ${e.message}`);
+    }
+  }
+}
+
 // 4. Main Bootstrap Sequence
 async function main() {
   log('supervisor', '================================================');
@@ -491,7 +553,10 @@ async function main() {
   // Step A: Run migrations
   await runMigrationsIfPossible();
 
-  // Step B: Spawn backend API
+  // Step B: Prepare static assets for Next.js standalone servers
+  syncStandaloneAssets();
+
+  // Step C: Spawn backend API
   spawnService('api', nodeCmd, ['services/api/dist/server.js'], {
     PORT: String(API_PORT),
   });
