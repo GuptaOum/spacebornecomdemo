@@ -55,11 +55,11 @@ The platform operates as a monorepo (npm workspaces) with 3 client-facing fronte
   3. **Database Tier (`10.20.20.0/24`, `10.20.21.0/24`):** Isolated private subnets with no Internet access, hosting RDS PostgreSQL.
 
 ### 2.2 Load Balancers & Ingress Security
-- **Public ALB (`spaceborn-dev-public`):**
+- **Public ALB (`spaceborn-prod-public`):**
   - **Port 80 (HTTP / CloudFront):** Routes `/` and `/_next/*` to `customer-storefront`. Routes `/v1/*` to `api`.
   - **Port 8080 (HTTP):** Routes directly to `vendor-hub`.
   - **Strict Security Rule:** Any incoming request matching `/v1/admin/*` is **explicitly blocked (HTTP 403 Forbidden)** at the public load balancer rule level.
-- **Internal Admin ALB (`spaceborn-dev-admin`):**
+- **Internal Admin ALB (`spaceborn-prod-admin`):**
   - Located in private subnets with zero public IP addresses.
   - Serves `admin-panel` on Port 80 and internal `/v1/*` API routes.
   - Can **only** be accessed via an encrypted AWS Systems Manager (SSM) port-forwarding session through the Bastion EC2 host (`i-0a2072cfc13d7a3fc`).

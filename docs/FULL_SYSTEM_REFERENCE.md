@@ -187,9 +187,11 @@ The catalog uses **PostgreSQL Full-Text Search (FTS)** combined with semantic ve
 | AWS Resource | Identifier / Configuration | Role in System |
 | :--- | :--- | :--- |
 | **VPC** | `10.20.0.0/16` (`ap-south-1`) | Multi-AZ isolated networking across 3 tiers. |
-| **ECS Fargate Cluster** | `spaceborn-dev` | Serverless container execution for all 5 services. |
-| **Public ALB** | `spaceborn-dev-public` | Port 80 (Storefront + API), Port 8080 (Vendor Hub). |
-| **Admin ALB** | `spaceborn-dev-admin` (Internal) | Port 80 (Admin Panel + Internal API), private subnet. |
+| **ECS Fargate Cluster** | `spaceborn-prod` | Serverless container execution for all 5 services. |
+| **Public ALB** | `spaceborn-prod-public` | Port 80 (Storefront + API), Port 8080 (Vendor Hub). |
+| **Admin ALB** | `spaceborn-prod-admin` (Internal) | Port 80 (Admin Panel + Internal API), private subnet. |
+| **NAT Gateways** | One per AZ (`single_nat_gateway = false`) | Outbound traffic survives a single-AZ outage. |
+| **RDS PostgreSQL 16** | `spaceborn-prod-db`, Multi-AZ | Standby replica in the second AZ, deletion protection, final snapshot on destroy. |
 | **Bastion Host** | `i-0a2072cfc13d7a3fc` (`t4g.micro`) | SSM-managed secure gateway for Admin port-forwarding. |
 | **RDS PostgreSQL** | `db.t4g.micro`, gp3 (Encrypted) | Primary relational database with automated backups. |
 | **S3 Uploads Bucket**| `spaceborn-uploads-*` | Private KMS-encrypted bucket for customer CAD designs. |

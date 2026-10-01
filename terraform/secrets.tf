@@ -1,5 +1,5 @@
 # Terraform only creates the container. Put the real values in once, outside Terraform:
-#   aws secretsmanager put-secret-value --profile spaceborn --secret-id spaceborn-dev/app \
+#   aws secretsmanager put-secret-value --profile spaceborn --secret-id spaceborn-prod/app \
 #     --secret-string file://app-secret.json
 resource "aws_secretsmanager_secret" "app" {
   name                    = "${local.name}/app"

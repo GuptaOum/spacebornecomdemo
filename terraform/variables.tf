@@ -21,7 +21,7 @@ variable "aws_account_id" {
 
 variable "environment" {
   type    = string
-  default = "dev"
+  default = "prod"
 
   validation {
     condition     = contains(["dev", "staging", "prod"], var.environment)
@@ -37,7 +37,7 @@ variable "vpc_cidr" {
 variable "single_nat_gateway" {
   type        = bool
   description = "One shared NAT gateway (cheaper) instead of one per AZ (survives an AZ outage)."
-  default     = true
+  default     = false
 }
 
 variable "domain_name" {
@@ -80,7 +80,7 @@ variable "db_max_allocated_storage" {
 
 variable "db_multi_az" {
   type    = bool
-  default = false
+  default = true
 }
 
 variable "db_backup_retention_days" {

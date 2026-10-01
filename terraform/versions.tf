@@ -10,7 +10,7 @@ terraform {
 
   backend "s3" {
     bucket       = "spaceborn-tfstate-758530010955"
-    key          = "spaceborn/dev/terraform.tfstate"
+    key          = "spaceborn/prod/terraform.tfstate"
     region       = "ap-south-1"
     encrypt      = true
     use_lockfile = true

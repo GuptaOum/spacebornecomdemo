@@ -46,8 +46,8 @@ if ($env:PATH -notlike '*SessionManagerPlugin*') {
 
 $Region      = 'ap-south-1'
 $AccountId   = '758530010955'
-$Cluster     = 'spaceborn-dev'
-$DbInstance  = 'spaceborn-dev-db'
+$Cluster     = 'spaceborn-prod'
+$DbInstance  = 'spaceborn-prod-db'
 $BuildBucket = "spaceborn-build-$AccountId"
 $BuildProject = 'spaceborn-build'
 $RepoRoot    = Split-Path -Parent $PSScriptRoot
@@ -125,13 +125,18 @@ function Set-ServiceScale {
 switch ($Command) {
 
   'up' {
+    Push-Location $TerraformDir
+    try {
+      & terraform init -input=false -reconfigure | Out-Null
+      if ($LASTEXITCODE -ne 0) { throw 'terraform init failed' }
+    } finally { Pop-Location }
+
     Write-Host 'Re-attaching the kept CloudFront distributions' -ForegroundColor Cyan
     Adopt-CloudFront -TerraformDir $TerraformDir -Region $Region
 
     Write-Host 'Creating the stack (about 10-15 minutes; RDS is the slow part)' -ForegroundColor Cyan
     Push-Location $TerraformDir
     try {
-      & terraform init -input=false | Out-Null
       & terraform apply -auto-approve -input=false
       if ($LASTEXITCODE -ne 0) { throw 'terraform apply failed' }
     } finally { Pop-Location }

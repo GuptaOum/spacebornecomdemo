@@ -2,9 +2,11 @@
 # Dot-source this file, then call Release-CloudFront before `terraform destroy` and
 # Adopt-CloudFront before `terraform apply`. Comments must match terraform/cloudfront.tf.
 
+# Comments are tried in order. The spaceborn-dev names belong to the distributions created before the
+# stack was renamed to prod; adopting them keeps their URLs, and the next apply rewrites the comment.
 $KeptDistributions = @(
-  @{ Address = 'aws_cloudfront_distribution.main[0]';   Comment = 'spaceborn-dev storefront and API' },
-  @{ Address = 'aws_cloudfront_distribution.vendor[0]'; Comment = 'spaceborn-dev vendor hub' }
+  @{ Address = 'aws_cloudfront_distribution.main[0]';   Comments = @('spaceborn-prod storefront and API', 'spaceborn-dev storefront and API') },
+  @{ Address = 'aws_cloudfront_distribution.vendor[0]'; Comments = @('spaceborn-prod vendor hub', 'spaceborn-dev vendor hub') }
 )
 
 function Get-StateAddresses {
@@ -37,10 +39,15 @@ function Adopt-CloudFront {
   try {
     foreach ($d in $KeptDistributions) {
       if ($state -contains $d.Address) { continue }
-      $id = & aws cloudfront list-distributions --region $Region `
-        --query "DistributionList.Items[?Comment=='$($d.Comment)'].Id | [0]" --output text
-      if ($LASTEXITCODE -ne 0) { throw 'aws cloudfront list-distributions failed' }
-      if (-not $id -or $id -eq 'None') { continue }
+      $id = $null
+      foreach ($comment in $d.Comments) {
+        $id = & aws cloudfront list-distributions --region $Region `
+          --query "DistributionList.Items[?Comment=='$comment'].Id | [0]" --output text
+        if ($LASTEXITCODE -ne 0) { throw 'aws cloudfront list-distributions failed' }
+        if ($id -and $id -ne 'None') { break }
+        $id = $null
+      }
+      if (-not $id) { continue }
       & terraform import -input=false -no-color $d.Address $id | Out-Null
       if ($LASTEXITCODE -ne 0) { throw "terraform import $($d.Address) $id failed" }
       Write-Host "  re-attached $($d.Address) -> $id" -ForegroundColor Green

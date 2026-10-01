@@ -6,7 +6,7 @@
 aws_profile    = "spaceborn"
 aws_account_id = "000000000000" # REPLACE: your 12-digit AWS account ID
 aws_region     = "ap-south-1"
-environment    = "dev"
+environment    = "prod"
 
 firebase_project_id = "REPLACE_WITH_FIREBASE_PROJECT_ID"
 
@@ -17,5 +17,7 @@ admin_allowed_cidrs = [] # e.g. ["10.8.0.0/16"] if you add a VPN
 
 image_tag = "latest" # CI sets this to the git SHA
 
+single_nat_gateway = false # one NAT per AZ so an AZ outage keeps outbound traffic working
+
 db_instance_class = "db.t4g.micro"
-db_multi_az       = false # set true for prod
+db_multi_az       = true
