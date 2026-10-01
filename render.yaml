@@ -1,0 +1,151 @@
+# ==============================================================================
+# Spaceborn E-Commerce & Fabrication Platform — Render Blueprint (4 Services)
+# https://render.com/docs/blueprint-spec
+#
+# Defines 4 distinct Web Services on Render Free Tier:
+#   1. spaceborn-api          (Backend Express API & RBAC engine)
+#   2. spaceborn-storefront   (Customer quick-commerce & 3D print / CNC storefront)
+#   3. spaceborn-vendor-hub   (Vendor portal for inventory, orders & fabrication)
+#   4. spaceborn-admin-panel  (Admin operations, store verification & catalog approval)
+#
+# NOTE: If you wish to run all 4 services inside a single free container (to stay
+# 100% within Render's 750 free hours/month perpetually), use `render.unified.yaml`.
+# ==============================================================================
+
+services:
+  # ----------------------------------------------------------------------------
+  # 1. Backend API Service
+  # ----------------------------------------------------------------------------
+  - type: web
+    name: spaceborn-api
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm install && npm run build -w @spaceborn/web-core && npm run build -w @spaceborn/api
+    startCommand: npm run start -w @spaceborn/api
+    healthCheckPath: /v1/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4000
+      - key: DATABASE_URL
+        sync: false
+      - key: DB_SSL
+        value: require
+      - key: PAYMENTS_ALLOW_MOCK
+        value: "true"
+      - key: UPLOADS_ALLOW_LOCAL
+        value: "true"
+      - key: CORS_ORIGIN
+        value: "*"
+      - key: FIREBASE_PROJECT_ID
+        sync: false
+      - key: FIREBASE_SERVICE_ACCOUNT_JSON
+        sync: false
+      - key: PUBLIC_ORIGIN
+        fromService:
+          type: web
+          name: spaceborn-storefront
+          property: url
+      - key: VENDOR_ORIGIN
+        fromService:
+          type: web
+          name: spaceborn-vendor-hub
+          property: url
+
+  # ----------------------------------------------------------------------------
+  # 2. Customer Storefront
+  # ----------------------------------------------------------------------------
+  - type: web
+    name: spaceborn-storefront
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm install && npm run build -w @spaceborn/web-core && npm run build -w customer-storefront
+    startCommand: npx next start apps/customer-storefront -p $PORT
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          type: web
+          name: spaceborn-api
+          property: url
+      - key: API_ORIGIN
+        fromService:
+          type: web
+          name: spaceborn-api
+          property: url
+      - key: NEXT_PUBLIC_FIREBASE_API_KEY
+        sync: false
+      - key: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+        sync: false
+      - key: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+        sync: false
+      - key: NEXT_PUBLIC_FIREBASE_APP_ID
+        sync: false
+
+  # ----------------------------------------------------------------------------
+  # 3. Vendor Hub
+  # ----------------------------------------------------------------------------
+  - type: web
+    name: spaceborn-vendor-hub
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm install && npm run build -w @spaceborn/web-core && npm run build -w vendor-hub
+    startCommand: npx next start apps/vendor-hub -p $PORT
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          type: web
+          name: spaceborn-api
+          property: url
+      - key: API_ORIGIN
+        fromService:
+          type: web
+          name: spaceborn-api
+          property: url
+      - key: NEXT_PUBLIC_FIREBASE_API_KEY
+        sync: false
+      - key: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+        sync: false
+      - key: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+        sync: false
+      - key: NEXT_PUBLIC_FIREBASE_APP_ID
+        sync: false
+
+  # ----------------------------------------------------------------------------
+  # 4. Admin Panel
+  # ----------------------------------------------------------------------------
+  - type: web
+    name: spaceborn-admin-panel
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm install && npm run build -w @spaceborn/web-core && npm run build -w admin-panel
+    startCommand: npx next start apps/admin-panel -p $PORT
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          type: web
+          name: spaceborn-api
+          property: url
+      - key: API_ORIGIN
+        fromService:
+          type: web
+          name: spaceborn-api
+          property: url
+      - key: NEXT_PUBLIC_FIREBASE_API_KEY
+        sync: false
+      - key: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+        sync: false
+      - key: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+        sync: false
+      - key: NEXT_PUBLIC_FIREBASE_APP_ID
+        sync: false

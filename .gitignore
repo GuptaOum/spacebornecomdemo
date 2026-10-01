@@ -1,0 +1,57 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+.next/
+out/
+build/
+dist/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment & secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.pem
+
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# Archives & temporary
+apps.tar.gz
+*.tmp
+patch_*.js
+fix_all.py
+*.tsx_ec2.tsx
+
+# TypeScript
+*.tsbuildinfo
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+tfplan
+*.tfplan
+
+.uploads/
+
+# Editor and local tooling metadata
+.vscode/
+.idea/
+CLAUDE.md
+AGENTS.md
+app.log
