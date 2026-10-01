@@ -182,7 +182,7 @@ function startGateway() {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({
         gateway: 'Spaceborn Unified Supervisor',
-        version: 'v1.0.4-standalone',
+        version: 'v1.0.5-standalone',
         uptimeSeconds: Math.round(process.uptime()),
         timestamp: new Date().toISOString(),
         services: children.map(c => ({
@@ -193,6 +193,29 @@ function startGateway() {
           recentLogs: c.logs.slice(-10),
         })),
       }, null, 2));
+      return;
+    }
+
+    // Static asset discovery diagnostic: /__find_static
+    if (url.pathname === '/__find_static') {
+      const file = url.searchParams.get('file') || '064vepiurk-uz.css';
+      const found = [];
+      function search(dir, depth = 0) {
+        if (depth > 6) return;
+        try {
+          for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+            const full = path.join(dir, entry.name);
+            if (entry.isDirectory() && entry.name !== 'node_modules' && !entry.name.startsWith('.git')) {
+              search(full, depth + 1);
+            } else if (entry.name.includes(file) || entry.name.endsWith('.css')) {
+              found.push(full);
+            }
+          }
+        } catch {}
+      }
+      search(ROOT_DIR);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ searchedFor: file, found, rootDir: ROOT_DIR }, null, 2));
       return;
     }
 
