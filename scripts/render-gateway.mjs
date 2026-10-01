@@ -290,13 +290,17 @@ function startGateway() {
 }
 
 function proxyRequest(req, res, targetPort) {
+  const reqHeaders = { ...req.headers };
+  // Disable internal gzip compression so HTML banner injection does not corrupt zlib stream
+  delete reqHeaders['accept-encoding'];
+
   const options = {
     hostname: '127.0.0.1',
     port: targetPort,
     path: req.url,
     method: req.method,
     headers: {
-      ...req.headers,
+      ...reqHeaders,
       host: `127.0.0.1:${targetPort}`,
       'x-forwarded-for': req.headers['x-forwarded-for'] || req.socket.remoteAddress,
       'x-forwarded-proto': req.headers['x-forwarded-proto'] || 'http',
@@ -330,6 +334,7 @@ function proxyRequest(req, res, targetPort) {
 
       const headers = { ...targetRes.headers };
       delete headers['content-length'];
+      delete headers['content-encoding'];
       headers['content-length'] = Buffer.byteLength(body);
 
       res.writeHead(targetRes.statusCode, headers);
