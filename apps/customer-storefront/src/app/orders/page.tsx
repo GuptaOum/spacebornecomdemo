@@ -122,14 +122,43 @@ export default function OrdersPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4 px-4 py-8">
-      <h1 className="text-xl font-bold text-[#34222e]">My orders</h1>
+    <div className="mx-auto max-w-3xl space-y-4 px-4 py-6 sm:py-8">
+      {/* Breadcrumbs & Navigation */}
+      <div className="flex items-center justify-between flex-wrap gap-2 text-xs text-[#7a6274]">
+        <div className="flex items-center space-x-2">
+          <button onClick={() => router.push('/')} className="hover:text-[#34222e] cursor-pointer transition-colors">Home</button>
+          <span>/</span>
+          <button onClick={() => router.push('/profile')} className="hover:text-[#34222e] cursor-pointer transition-colors">Dashboard</button>
+          <span>/</span>
+          <span className="font-semibold text-[#34222e]">My Orders</span>
+        </div>
+        <button
+          onClick={() => router.push('/profile')}
+          className="text-xs font-bold text-[#0c831f] hover:underline cursor-pointer"
+        >
+          ← Back to Dashboard
+        </button>
+      </div>
+
+      <div className="flex items-center justify-between pt-1">
+        <div>
+          <h1 className="text-xl font-bold text-[#34222e]">My orders</h1>
+          <p className="text-xs text-[#7a6274] mt-0.5">Live tracking, handover OTP codes, and delivery progress.</p>
+        </div>
+        <button
+          onClick={() => void orders.reload()}
+          className="px-3 py-1.5 rounded-xl border border-[#f9bf8f]/60 bg-[#fffbf7] hover:bg-[#fee9d7]/50 text-xs font-semibold text-[#34222e] cursor-pointer transition shadow-xs"
+        >
+          Refresh
+        </button>
+      </div>
+
       {orders.error && <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{orders.error}</p>}
       {orders.loading && !orders.data && <p className="text-sm text-[#7a6274]">Loading your orders…</p>}
       {orders.data?.length === 0 && (
         <div className="rounded-3xl border border-[#f9bf8f]/60 bg-[#fffbf7] p-8 text-center">
           <p className="text-sm text-[#7a6274]">No orders yet.</p>
-          <button onClick={() => router.push('/catalog')} className="mt-3 rounded-xl bg-[#0c831f] px-5 py-2 text-xs font-bold text-white">
+          <button onClick={() => router.push('/catalog')} className="mt-3 rounded-xl bg-[#0c831f] px-5 py-2 text-xs font-bold text-white cursor-pointer hover:bg-[#0a6e1a] transition">
             Start shopping
           </button>
         </div>

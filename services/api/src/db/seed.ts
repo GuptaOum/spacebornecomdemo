@@ -40,7 +40,7 @@ export async function seed() {
       await c.query(
         `insert into products (sku, name, category_id, description, image_url, mrp, specs)
          values ($1, $2, $3, $4, $5, $6, $7)
-         on conflict (sku) do update set specs = excluded.specs`,
+         on conflict (sku) do update set image_url = excluded.image_url, specs = excluded.specs`,
         [item.sku, item.name, category.id, item.description, item.image, Math.ceil(item.price * 1.2),
           JSON.stringify(specs)],
       );

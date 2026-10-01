@@ -42,7 +42,19 @@ function log(prefix, msg) {
   console.log(`[${ts}] [${prefix}] ${msg}`);
 }
 
+function getMemoryLimit(name) {
+  switch (name) {
+    case 'api': return '64';
+    case 'storefront': return '96';
+    case 'vendor': return '72';
+    case 'admin': return '72';
+    default: return '80';
+  }
+}
+
 function spawnService(name, command, args, envVars = {}) {
+  const defaultMemory = getMemoryLimit(name);
+  const nodeOptions = envVars.NODE_OPTIONS || process.env.NODE_OPTIONS || `--max-old-space-size=${defaultMemory} --optimize-for-size`;
   const childEnv = {
     ...process.env,
     PORT: envVars.PORT,
@@ -50,7 +62,8 @@ function spawnService(name, command, args, envVars = {}) {
     NODE_ENV: process.env.NODE_ENV || 'production',
     PAYMENTS_ALLOW_MOCK: process.env.PAYMENTS_ALLOW_MOCK || 'true',
     UPLOADS_ALLOW_LOCAL: process.env.UPLOADS_ALLOW_LOCAL || 'true',
-    NODE_OPTIONS: process.env.NODE_OPTIONS || '--max-old-space-size=128',
+    DB_POOL_MAX: process.env.DB_POOL_MAX || '5',
+    NODE_OPTIONS: nodeOptions,
     API_ORIGIN: `http://127.0.0.1:${API_PORT}`,
     NEXT_PUBLIC_API_URL: `http://127.0.0.1:${API_PORT}`,
     ...envVars,
@@ -408,15 +421,43 @@ function proxyRequest(req, res, targetPort) {
       const targetService = children.find((c) => String(c.envVars?.PORT) === String(targetPort));
       const logLines = targetService?.logs?.slice(-6)?.join('\n') || 'Service process has not written any output yet.';
       res.writeHead(503, { 'Content-Type': 'text/html; charset=utf-8' });
-      res.end(`
-        <div style="font-family:sans-serif;padding:40px;text-align:center;line-height:1.6;background:#090d16;color:#f1f5f9;min-height:100vh">
-          <h2 style="color:#e11d48">⚡ Spaceborn Service on Port ${targetPort} is Offline or Initializing</h2>
-          <p style="color:#94a3b8">The service on port <b>${targetPort}</b> (${targetService?.name || 'app'}) status is: <b>${targetService?.status || 'starting'}</b>.</p>
-          <pre style="text-align:left;background:#1e293b;color:#38bdf8;padding:16px;border-radius:8px;max-width:750px;margin:20px auto;overflow:auto;font-size:12px;border:1px solid #334155;white-space:pre-wrap;">${logLines}</pre>
-          <p><a href="${req.url}" style="display:inline-block;margin-top:12px;padding:8px 18px;background:#2563eb;color:#fff;border-radius:6px;text-decoration:none">Click to Refresh</a></p>
-          <p style="margin-top:16px"><a href="/__status" style="color:#64748b;text-decoration:underline">Inspect Live Diagnostics (/__status)</a></p>
-        </div>
-      `);
+      res.end(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="refresh" content="3">
+  <title>Spaceborn Service Initializing...</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #090d16; color: #f1f5f9; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
+    .card { background: #131b2e; border: 1px solid #1e293b; border-radius: 16px; max-width: 600px; width: 100%; padding: 32px; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
+    .spinner { width: 44px; height: 44px; border: 3px solid rgba(226,67,75,0.2); border-top-color: #e2434b; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 20px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    h2 { font-size: 20px; margin: 0 0 10px; color: #fff; font-weight: 700; }
+    p { color: #94a3b8; font-size: 14px; line-height: 1.5; margin: 0 0 16px; }
+    .badge { display: inline-block; background: rgba(5,150,105,0.15); color: #10b981; border: 1px solid rgba(16,185,129,0.3); border-radius: 9999px; padding: 4px 12px; font-size: 12px; font-weight: 600; margin-bottom: 20px; }
+    .btn { display: inline-block; padding: 10px 24px; background: #e2434b; color: #fff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; transition: opacity 0.2s; }
+    .btn:hover { opacity: 0.9; }
+    pre { text-align: left; background: #0b0f19; color: #38bdf8; padding: 12px; border-radius: 8px; font-size: 11px; max-height: 140px; overflow: auto; border: 1px solid #1e293b; margin: 20px 0; white-space: pre-wrap; word-break: break-all; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="spinner"></div>
+    <span class="badge">Auto-reconnecting in 3s...</span>
+    <h2>⚡ Spaceborn Service Initializing</h2>
+    <p>Service on port <b>${targetPort}</b> (${targetService?.name || 'app'}) is warming up. Render free instances sleep after inactivity and wake up within 5–10 seconds.</p>
+    <pre>${logLines}</pre>
+    <div>
+      <a href="${req.url}" class="btn">Refresh Now</a>
+    </div>
+    <div style="margin-top: 16px;">
+      <a href="/__portal" style="color: #64748b; font-size: 12px; text-decoration: underline; margin-right: 12px;">App Portal</a>
+      <a href="/__status" style="color: #64748b; font-size: 12px; text-decoration: underline;">Live Diagnostics</a>
+    </div>
+  </div>
+</body>
+</html>`);
     }
   });
 

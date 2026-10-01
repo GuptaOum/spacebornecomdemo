@@ -15,7 +15,10 @@ import {
   MapPin,
   Receipt,
   Store,
-  ShieldCheck
+  ShieldCheck,
+  LayoutDashboard,
+  Wrench,
+  PhoneCall
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -180,47 +183,6 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="sticky top-0 z-50 bg-[#fffbf7] border-b border-[#f9bf8f]/60 shadow-xs transition-all">
-      {/* Robu-Style Services & Quick Access Top Bar */}
-      <div className="bg-[#34222e] text-[#fee9d7] text-[11px] font-medium border-b border-black/10">
-        <div className="max-w-7xl mx-auto px-4 py-1.5 flex items-center justify-between">
-          <div className="flex items-center space-x-3 sm:space-x-4 overflow-x-auto scrollbar-none py-0.5">
-            <button
-              onClick={() => onNavigate('fabrication')}
-              className="inline-flex items-center gap-1.5 text-[#f9bf8f] hover:text-white transition-colors cursor-pointer font-bold tracking-tight shrink-0"
-              title="3D Printing on demand"
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse"></span>
-              <span>⚡ 3D Printing Service</span>
-            </button>
-            <span className="text-white/20 select-none">|</span>
-            <button
-              onClick={() => onNavigate('fabrication')}
-              className="inline-flex items-center gap-1.5 hover:text-[#fee9d7] transition-colors cursor-pointer shrink-0 text-white/90"
-              title="CNC Machining & Laser Cutting"
-            >
-              <span>🛠️ CNC & Laser Cutting</span>
-            </button>
-            <span className="text-white/20 select-none">|</span>
-            <button
-              onClick={() => onNavigate('catalog')}
-              className="inline-flex items-center gap-1.5 hover:text-[#fee9d7] transition-colors cursor-pointer shrink-0 text-white/90"
-              title="PCB Prototyping"
-            >
-              <span>🔬 PCB Prototyping</span>
-            </button>
-          </div>
-          <div className="hidden md:flex items-center space-x-4 text-white/80 shrink-0">
-            <span className="flex items-center gap-1">
-              <span>📞 Support:</span>
-              <a href="tel:18002660199" className="text-[#fee9d7] hover:underline font-bold">1800 266 0199</a>
-            </span>
-            <span className="text-white/20 select-none">|</span>
-            <button onClick={() => onNavigate('orders')} className="hover:text-white transition cursor-pointer">
-              📦 Track Orders
-            </button>
-          </div>
-        </div>
-      </div>
 
       {/* Main Clean Header */}
       <div className="max-w-7xl mx-auto px-4 py-2.5">
@@ -408,14 +370,20 @@ export const Header: React.FC<HeaderProps> = ({
                   </div>
 
                   <div className="space-y-0.5">
-                    <button onClick={() => { onNavigate('profile'); setShowAccountMenu(false); }} className="w-full text-left px-3 py-2 rounded-lg hover:bg-[#fee9d7]/50 flex items-center space-x-2.5 text-[#34222e] text-xs font-medium cursor-pointer">
-                      <Settings className="w-3.5 h-3.5 text-[#7a6274]" /> <span>Account Profile</span>
+                    <button onClick={() => { onNavigate('profile'); setShowAccountMenu(false); }} className="w-full text-left px-3 py-2 rounded-lg hover:bg-[#fee9d7]/50 flex items-center space-x-2.5 text-[#34222e] text-xs font-semibold cursor-pointer transition">
+                      <LayoutDashboard className="w-3.5 h-3.5 text-[#0c831f]" /> <span>Account Dashboard</span>
                     </button>
-                    <button onClick={() => { onNavigate('orders'); setShowAccountMenu(false); }} className="w-full text-left px-3 py-2 rounded-lg hover:bg-[#fee9d7]/50 flex items-center space-x-2.5 text-[#34222e] text-xs font-medium cursor-pointer">
-                      <Receipt className="w-3.5 h-3.5 text-[#0c831f]" /> <span>My Orders</span>
+                    <button onClick={() => { onNavigate('orders'); setShowAccountMenu(false); }} className="w-full text-left px-3 py-2 rounded-lg hover:bg-[#fee9d7]/50 flex items-center space-x-2.5 text-[#34222e] text-xs font-semibold cursor-pointer transition">
+                      <Receipt className="w-3.5 h-3.5 text-[#34222e]" /> <span>My Orders</span>
                     </button>
-                    <button onClick={() => { onNavigate('wishlist'); setShowAccountMenu(false); }} className="w-full text-left px-3 py-2 rounded-lg hover:bg-[#fee9d7]/50 flex items-center space-x-2.5 text-[#34222e] text-xs font-medium cursor-pointer">
-                      <Heart className="w-3.5 h-3.5 text-[#e2434b]" /> <span>Wishlist ({wishlistCount})</span>
+                    <button onClick={() => { onNavigate('wishlist'); setShowAccountMenu(false); }} className="w-full text-left px-3 py-2 rounded-lg hover:bg-[#fee9d7]/50 flex items-center space-x-2.5 text-[#34222e] text-xs font-semibold cursor-pointer transition">
+                      <Heart className="w-3.5 h-3.5 text-[#e2434b]" /> <span>Saved Wishlist ({wishlistCount})</span>
+                    </button>
+                    <button onClick={() => { onNavigate('fabrication'); setShowAccountMenu(false); }} className="w-full text-left px-3 py-2 rounded-lg hover:bg-[#fee9d7]/50 flex items-center space-x-2.5 text-[#34222e] text-xs font-semibold cursor-pointer transition">
+                      <Wrench className="w-3.5 h-3.5 text-[#ca8a04]" /> <span>3D Printing & CNC Lab</span>
+                    </button>
+                    <button onClick={() => { onNavigate('contact'); setShowAccountMenu(false); }} className="w-full text-left px-3 py-2 rounded-lg hover:bg-[#fee9d7]/50 flex items-center space-x-2.5 text-[#34222e] text-xs font-semibold cursor-pointer transition">
+                      <PhoneCall className="w-3.5 h-3.5 text-[#7a6274]" /> <span>Help & Support</span>
                     </button>
                   </div>
                   
