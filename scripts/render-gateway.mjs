@@ -46,6 +46,7 @@ function spawnService(name, command, args, envVars = {}) {
   const childEnv = {
     ...process.env,
     PORT: envVars.PORT,
+    HOSTNAME: '0.0.0.0',
     NODE_ENV: process.env.NODE_ENV || 'production',
     PAYMENTS_ALLOW_MOCK: process.env.PAYMENTS_ALLOW_MOCK || 'true',
     UPLOADS_ALLOW_LOCAL: process.env.UPLOADS_ALLOW_LOCAL || 'true',
