@@ -17,6 +17,7 @@
 
 import http from 'node:http';
 import net from 'node:net';
+import fs from 'node:fs';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -450,18 +451,31 @@ async function main() {
   // Wait 1.5s for API to bind
   await new Promise((r) => setTimeout(r, 1500));
 
+  // Helper to resolve standalone server.js or fallback to next start
+  function getAppSpawnConfig(appName, port) {
+    const standaloneAppPath = path.join(ROOT_DIR, 'apps', appName, '.next', 'standalone', 'apps', appName, 'server.js');
+    const standaloneDirectPath = path.join(ROOT_DIR, 'apps', appName, '.next', 'standalone', 'server.js');
+    if (fs.existsSync(standaloneAppPath)) {
+      log('supervisor', `Using Next.js standalone server for ${appName}`);
+      return { cmd: nodeCmd, args: [standaloneAppPath] };
+    }
+    if (fs.existsSync(standaloneDirectPath)) {
+      log('supervisor', `Using Next.js standalone root server for ${appName}`);
+      return { cmd: nodeCmd, args: [standaloneDirectPath] };
+    }
+    log('supervisor', `Using standard next start for ${appName}`);
+    return { cmd: npxCmd, args: ['next', 'start', `apps/${appName}`, '-p', String(port)] };
+  }
+
   // Step C: Spawn 3 Next.js applications
-  spawnService('storefront', npxCmd, ['next', 'start', 'apps/customer-storefront', '-p', String(STORE_PORT)], {
-    PORT: String(STORE_PORT),
-  });
+  const sf = getAppSpawnConfig('customer-storefront', STORE_PORT);
+  spawnService('storefront', sf.cmd, sf.args, { PORT: String(STORE_PORT) });
 
-  spawnService('vendor', npxCmd, ['next', 'start', 'apps/vendor-hub', '-p', String(VENDOR_PORT)], {
-    PORT: String(VENDOR_PORT),
-  });
+  const vd = getAppSpawnConfig('vendor-hub', VENDOR_PORT);
+  spawnService('vendor', vd.cmd, vd.args, { PORT: String(VENDOR_PORT) });
 
-  spawnService('admin', npxCmd, ['next', 'start', 'apps/admin-panel', '-p', String(ADMIN_PORT)], {
-    PORT: String(ADMIN_PORT),
-  });
+  const ad = getAppSpawnConfig('admin-panel', ADMIN_PORT);
+  spawnService('admin', ad.cmd, ad.args, { PORT: String(ADMIN_PORT) });
 
   // Step D: Start Reverse Proxy Gateway
   startGateway();
