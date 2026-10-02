@@ -28,12 +28,16 @@ async function handle(row: OutboxRow) {
         providerPaymentId: string;
         amountPaise: number;
       };
+      const partial = Boolean((row.payload as { partial?: boolean }).partial);
       const current = await pool.query<{ status: string }>('select status from payments where id = $1', [paymentId]);
-      if (current.rows[0]?.status !== 'refund_pending') return;
-      if (config.paymentsMode === 'razorpay') {
+      const status = current.rows[0]?.status;
+      if (partial) {
+        if (status === 'refunded' || !providerPaymentId) return;
+      } else if (status !== 'refund_pending') return;
+      if (config.paymentsMode === 'razorpay' && providerPaymentId) {
         await refundPayment(providerPaymentId, amountPaise, (orderId ?? jobId)!);
       }
-      await pool.query(`update payments set status = 'refunded' where id = $1 and status = 'refund_pending'`, [paymentId]);
+      if (!partial) await pool.query(`update payments set status = 'refunded' where id = $1 and status = 'refund_pending'`, [paymentId]);
       logger.info({ orderId, jobId, amountPaise }, 'refund issued');
       return;
     }

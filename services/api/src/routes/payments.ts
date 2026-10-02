@@ -14,8 +14,14 @@ const json = express.json({ limit: '20kb' });
 
 async function paymentForCustomer(orderId: string, customerId: string) {
   const { rows } = await pool.query(
-    `select p.provider, p.provider_order_id from payments p join orders o on o.id = p.order_id
-      where o.id = $1 and o.customer_id = $2`,
+    `select p.provider, p.provider_order_id
+       from payments p
+       left join orders o on o.id = p.order_id
+       left join orders part on part.checkout_id = p.checkout_id
+       left join checkouts c on c.id = p.checkout_id
+      where (o.id = $1 or part.id = $1)
+        and coalesce(o.customer_id, part.customer_id, c.customer_id) = $2
+      limit 1`,
     [orderId, customerId],
   );
   if (!rows[0]) throw notFound('Payment not found');

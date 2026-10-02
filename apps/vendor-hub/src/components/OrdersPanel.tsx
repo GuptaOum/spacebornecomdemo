@@ -15,18 +15,33 @@ const NEXT_STEP: Partial<Record<OrderStatus, { to: OrderStatus; label: string }>
   out_for_delivery: { to: 'delivered', label: 'Confirm customer OTP' },
 };
 
+const HTML_ESCAPES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+
+function escapeHtml(value: unknown): string {
+  return String(value ?? '').replace(/[&<>"']/g, (ch) => HTML_ESCAPES[ch]);
+}
+
 function printPackingSlip(order: Order) {
   const win = window.open('', '_blank', 'width=450,height=600');
   if (!win) return;
-  const addr = order.deliveryAddress;
+  const raw = order.deliveryAddress;
+  const addr = {
+    fullName: escapeHtml(raw.fullName),
+    phone: escapeHtml(raw.phone),
+    line1: escapeHtml(raw.line1),
+    line2: raw.line2 ? escapeHtml(raw.line2) : '',
+    landmark: raw.landmark ? escapeHtml(raw.landmark) : '',
+    city: escapeHtml(raw.city),
+    pincode: escapeHtml(raw.pincode),
+  };
   const itemsHtml = order.items
     .map(
       (it) => `
       <tr>
         <td style="padding: 5px 0; border-bottom: 1px dashed #ddd;">
           <input type="checkbox" style="margin-right: 6px;" />
-          <b>${it.quantity}x</b> ${it.name}
-          <div style="font-size: 11px; color: #666; margin-left: 22px;">SKU: ${it.sku} · ₹${it.unitPrice}</div>
+          <b>${escapeHtml(it.quantity)}x</b> ${escapeHtml(it.name)}
+          <div style="font-size: 11px; color: #666; margin-left: 22px;">SKU: ${escapeHtml(it.sku)} · ₹${escapeHtml(it.unitPrice)}</div>
         </td>
         <td style="padding: 5px 0; border-bottom: 1px dashed #ddd; text-align: right; vertical-align: top;">
           ₹${it.lineTotal}

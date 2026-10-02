@@ -228,7 +228,7 @@ export function ApplicationForm({ initial, onSubmitted }: Props) {
             </label>
             <label className="block text-[11px] font-semibold text-slate-600">
               Radius (km)
-              <input required type="number" min="1" max="25" {...field('deliveryRadiusKm')} className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1.5 text-xs bg-white" />
+              <input required type="number" min="1" max="15" {...field('deliveryRadiusKm')} className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1.5 text-xs bg-white" />
             </label>
           </div>
           <p className="text-[10.5px] text-slate-500">

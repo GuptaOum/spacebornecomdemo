@@ -2,6 +2,7 @@
 import React from 'react';
 import { CartItem } from '../types';
 import { X, Trash2, ShoppingBag, ArrowRight, ShieldCheck, Zap, Plus, Minus, Lock } from 'lucide-react';
+import { estimateTotals, FREE_DELIVERY_THRESHOLD } from '../lib/pricing';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -25,12 +26,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   if (!isOpen) return null;
 
   const totalAmount = cart.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
-  const taxableSubtotal = totalAmount / 1.18;
-  const gstAmount = totalAmount - taxableSubtotal;
-
-  const FREE_SHIPPING_THRESHOLD = 500;
-  const amountNeededForFreeShipping = Math.max(0, FREE_SHIPPING_THRESHOLD - totalAmount);
-  const progressPercent = Math.min(100, Math.round((totalAmount / FREE_SHIPPING_THRESHOLD) * 100));
+  const totals = estimateTotals(totalAmount);
+  const amountNeededForFreeShipping = totals.amountToFreeDelivery;
+  const progressPercent = Math.min(100, Math.round((totalAmount / FREE_DELIVERY_THRESHOLD) * 100));
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in duration-200">
@@ -177,25 +175,28 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             <div className="p-4 bg-[#fee9d7] border-t border-[#f9bf8f]/60 space-y-3">
               <div className="space-y-1.5 text-xs text-[#7a6274]">
                 <div className="flex justify-between">
-                  <span>Taxable Subtotal (excl. GST):</span>
-                  <span className="font-semibold text-[#34222e]">₹{taxableSubtotal.toFixed(2)}</span>
+                  <span>Items (incl. GST):</span>
+                  <span className="font-semibold text-[#34222e]">₹{totalAmount.toLocaleString('en-IN')}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>IGST / CGST+SGST (18%):</span>
-                  <span className="font-semibold text-[#34222e]">₹{gstAmount.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Express Runner Dispatch:</span>
+                  <span>Delivery:</span>
                   <span className="font-semibold text-[#059669]">
-                    {amountNeededForFreeShipping === 0 ? 'FREE' : '₹49.00'}
+                    {totals.freeDelivery ? 'FREE' : `from ₹${totals.deliveryFrom}`}
                   </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Platform fee:</span>
+                  <span className="font-semibold text-[#34222e]">₹{totals.platformFee}</span>
                 </div>
                 <div className="flex justify-between text-sm font-bold text-[#34222e] pt-2 border-t border-[#f9bf8f]/60">
-                  <span>Grand Total:</span>
+                  <span>Estimated total:</span>
                   <span className="text-[#34222e] text-base font-extrabold">
-                    ₹{(totalAmount + (amountNeededForFreeShipping === 0 ? 0 : 49)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    ₹{totals.estimatedTotal.toLocaleString('en-IN')}
                   </span>
                 </div>
+                {!totals.freeDelivery && (
+                  <p className="text-[10px] text-[#7a6274]">Exact delivery fee depends on distance and is shown at checkout.</p>
+                )}
               </div>
 
               {/* Action Buttons */}
@@ -212,7 +213,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                     <span>Proceed to Pay</span>
                   </div>
                   <div className="flex items-center gap-1.5 text-white/95 font-semibold">
-                    <span>₹{(totalAmount + (amountNeededForFreeShipping === 0 ? 0 : 49)).toLocaleString('en-IN')}</span>
+                    <span>₹{totals.estimatedTotal.toLocaleString('en-IN')}</span>
                     <ArrowRight className="w-4 h-4 stroke-[2.5]" />
                   </div>
                 </button>

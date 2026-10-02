@@ -10,6 +10,16 @@ import { FilterChips, ListState, StatusBadge } from './ui';
 
 const FILTERS: SubmissionStatus[] = ['pending', 'approved', 'rejected'];
 
+function pct(n: number | null) {
+  return n == null ? '—' : `${Math.round(n * 100)}%`;
+}
+
+function CatalogPhoto({ id }: { id: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) return <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded bg-slate-100 text-[10px] text-slate-400">No photo</div>;
+  return <img src={`/v1/catalog/products/${id}/image`} alt="" className="h-24 w-24 shrink-0 rounded bg-slate-50 object-contain" onError={() => setFailed(true)} />;
+}
+
 function Photo({ id }: { id: string }) {
   const [src, setSrc] = useState<string | null>(null);
   useEffect(() => {
@@ -79,13 +89,26 @@ function Review({ submission, onDecided }: { submission: ProductSubmission; onDe
       {detail.data?.similar.length === 0 && <p className="text-xs text-emerald-700">No similar catalog item found. Safe to approve as new.</p>}
       <ul className="space-y-2">
         {detail.data?.similar.map((match) => (
-          <li key={`${match.kind}-${match.id}`} className={`flex flex-wrap items-center justify-between gap-2 rounded-lg px-3 py-2 text-xs ${match.likelyDuplicate ? 'bg-amber-50 ring-1 ring-amber-200' : 'bg-slate-50'}`}>
-            <div>
+          <li key={`${match.kind}-${match.id}`} className={`flex flex-wrap items-center gap-3 rounded-lg px-3 py-2 text-xs ${match.likelyDuplicate ? 'bg-amber-50 ring-1 ring-amber-200' : 'bg-slate-50'}`}>
+            <div className="flex items-center gap-2">
+              <div>
+                <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">This proposal</p>
+                <Photo id={submission.id} />
+              </div>
+              <div>
+                <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Suggested match</p>
+                {match.kind === 'catalog' ? <CatalogPhoto id={match.id} /> : <Photo id={match.id} />}
+              </div>
+            </div>
+            <div className="min-w-0 flex-1">
               <p className="font-semibold text-slate-800">
                 {match.name} {match.likelyDuplicate && <span className="text-amber-700">· likely duplicate</span>}
               </p>
               <p className="text-slate-500">
-                {match.kind === 'catalog' ? `Catalog ${match.sku ?? ''}` : `Pending submission${match.city ? ` · ${match.city}` : ''}`} · match {Math.round(match.score * 100)}%
+                {match.kind === 'catalog' ? `Catalog ${match.sku ?? ''}` : `Pending submission${match.city ? ` · ${match.city}` : ''}`} · overall {pct(match.score)}
+              </p>
+              <p className="mt-1 text-slate-600">
+                Text {pct(match.textScore)} · Photo {pct(match.imageScore)} · Title {pct(match.nameScore)}
               </p>
             </div>
             {match.kind === 'catalog' && submission.status === 'pending' && (

@@ -67,7 +67,7 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
   onSearchChange,
   onClearSearch,
 }) => {
-  const { searchResults, searchStatus } = useStore();
+  const { searchResults, searchStatus, catalogStatus } = useStore();
   // Server results are already ranked by relevance; the local token filter is only a fallback.
   const serverRanked = initialSearchQuery.trim().length > 1 && searchResults !== null;
 
@@ -698,9 +698,21 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
                 <div className="w-14 h-14 rounded-full bg-[#fee9d7] mx-auto flex items-center justify-center text-[#e2434b]">
                   <Search className="w-6 h-6" />
                 </div>
-                <h3 className="text-sm font-bold text-[#34222e]">No products found</h3>
+                <h3 className="text-sm font-bold text-[#34222e]">
+                  {catalogStatus === 'loading'
+                    ? 'Loading products near you'
+                    : catalogStatus === 'error'
+                      ? 'Could not load products'
+                      : catalogStatus === 'unserviceable'
+                        ? 'No store delivers here yet'
+                        : 'No products found'}
+                </h3>
                 <p className="text-xs text-[#7a6274] max-w-sm mx-auto">
-                  {initialSearchQuery.trim()
+                  {catalogStatus === 'error'
+                    ? 'Check your connection and try again in a moment.'
+                    : catalogStatus === 'unserviceable'
+                      ? 'Try a different delivery location from the header.'
+                      : initialSearchQuery.trim()
                     ? `No components or hardware found matching "${initialSearchQuery}".`
                     : 'Try adjusting your filters or price range to find matching components.'}
                 </p>

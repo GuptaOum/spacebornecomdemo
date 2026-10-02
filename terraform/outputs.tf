@@ -62,6 +62,10 @@ output "db_endpoint" {
   value = aws_db_instance.main.address
 }
 
+output "redis_endpoint" {
+  value = aws_elasticache_cluster.redis.cache_nodes[0].address
+}
+
 output "db_master_secret_arn" {
   value = local.db_secret_arn
 }

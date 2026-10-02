@@ -1,3 +1,5 @@
+import type { ProductBadge } from '@spaceborn/web-core/types';
+
 export interface Product {
   id: string;
   vendorId?: string; // Multi-vendor extension
@@ -41,6 +43,10 @@ export interface Product {
   cadModelUrl?: string;
   badge?: string;
   isChoice?: boolean;
+  /** Admin-assigned trust badges, see PRODUCT_BADGES in web-core. */
+  badges?: ProductBadge[];
+  storeDistanceKm?: number;
+  storeCount?: number;
   deliveryMins?: number; // e.g. 10 or 15 mins
   packSize?: string; // e.g. '1 Unit', 'Pack of 2', '100g'
   flashDeal?: boolean;

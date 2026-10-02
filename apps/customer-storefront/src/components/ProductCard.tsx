@@ -1,7 +1,8 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { Product } from '../types';
-import { Eye, Zap, Plus, Minus, Star } from 'lucide-react';
+import { Eye, Zap, Plus, Minus, BadgeCheck } from 'lucide-react';
+import { PRODUCT_BADGES } from '@spaceborn/web-core/types';
 
 interface ProductCardProps {
   product: Product;
@@ -78,6 +79,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   };
 
   const deliveryTime = product.deliveryMins || 10;
+  const primaryBadge = product.badges?.[0] ?? (product.isChoice ? 'our_pick' : undefined);
   const discountPercent = product.originalPrice && product.originalPrice > product.price
     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
     : null;
@@ -130,9 +132,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           loading="lazy"
           onError={() => setImgSrc('/spaceborn-logo.svg')}
         />
-        {(product.isChoice || product.badge === 'Spaceborn Choice' || product.badge === "Spaceborn's Choice") && (
-          <span className="absolute bottom-1.5 left-1.5 z-10 inline-flex items-center gap-1 bg-[#1e293b]/95 backdrop-blur-xs text-[#f8cb46] text-[8.5px] font-black px-1.5 py-0.5 rounded shadow-xs border border-[#f8cb46]/40 uppercase tracking-wider">
-            <span>⭐</span> Spaceborn's Choice
+        {primaryBadge && (
+          <span className="absolute bottom-1.5 left-1.5 z-10 inline-flex items-center gap-1 rounded-md bg-[#34222e] px-1.5 py-0.5 text-[10px] font-semibold text-white shadow-xs">
+            <BadgeCheck className="w-3 h-3" />
+            {PRODUCT_BADGES[primaryBadge].label}
           </span>
         )}
       </div>
@@ -143,10 +146,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           {/* Robu-Style Category / Brand & Rating Tag */}
           <div className="flex items-center justify-between text-[10px] text-[#34222e]/60 font-medium mb-0.5">
             <span className="truncate max-w-[120px] font-bold text-[#e2434b] uppercase tracking-wider">{product.brand || product.category}</span>
-            <span className="flex items-center gap-0.5 font-bold text-[#34222e]/80">
-              <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-              <span>{product.rating || '4.8'}</span>
-            </span>
+            {product.stock > 0 && product.stock <= 5 && (
+              <span className="font-bold text-[#e2434b]">Only {product.stock} left</span>
+            )}
           </div>
 
           {/* Title: 2-line clamped */}
@@ -184,7 +186,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               )}
             </div>
             <span className="text-[9px] text-[#34222e]/60 font-medium">
-              (Incl. 18% GST)
+              (Incl. {product.gstRate || 18}% GST)
             </span>
           </div>
 

@@ -40,3 +40,8 @@ export const fabStatusList = z
   .pipe(z.array(z.enum(FAB_STATUSES)).nullable());
 
 export const escapeLike = (value: string) => value.replace(/[\\%_]/g, (c) => `\\${c}`);
+
+// Mirrors PRODUCT_BADGES in packages/web-core/src/types.ts.
+export const PRODUCT_BADGES = ['our_pick', 'most_sold', 'verified', 'new_arrival'] as const;
+export const productBadges = z.array(z.enum(PRODUCT_BADGES)).max(PRODUCT_BADGES.length)
+  .transform((list) => Array.from(new Set(list)));

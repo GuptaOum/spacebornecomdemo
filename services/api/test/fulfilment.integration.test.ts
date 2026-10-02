@@ -200,13 +200,12 @@ describe('checkout without choosing a vendor', () => {
       address,
     }, idem());
 
-    expect(placed.status).toBe(409);
-    expect(placed.body.error.details.code).toBe('partial_availability');
-    // B is genuinely on sale nearby, so it must not be reported as unavailable.
-    expect(placed.body.error.details.items).toEqual([
-      expect.objectContaining({ productId: productB, reason: 'split_required' }),
-    ]);
-    expect(placed.body.error.message).toMatch(/no single store/i);
+    expect(placed.status).toBe(201);
+    const parts = await db.pool.query<{ store_id: string }>(
+      `select store_id from orders where checkout_id = (select checkout_id from orders where id = $1)`,
+      [placed.body.order.id],
+    );
+    expect(parts.rows.map((row) => row.store_id).sort()).toEqual([kanpurStore, secondKanpurStore].sort());
 
     await db.pool.query('update inventory set stock = 10 where store_id = $1 and product_id = $2', [kanpurStore, productA]);
   });

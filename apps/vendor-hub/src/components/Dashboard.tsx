@@ -10,15 +10,17 @@ import { FabJobsPanel } from './FabJobsPanel';
 import { InventoryPanel } from './InventoryPanel';
 import { OrdersPanel } from './OrdersPanel';
 import { ProductsPanel } from './ProductsPanel';
+import { MessagesPanel } from './MessagesPanel';
 import { ServicesPanel } from './ServicesPanel';
 
-type Tab = 'orders' | 'inventory' | 'products' | 'fab-jobs' | 'services';
+type Tab = 'orders' | 'inventory' | 'products' | 'fab-jobs' | 'services' | 'messages';
 const TABS: [Tab, string][] = [
   ['orders', 'Orders'],
   ['inventory', 'Inventory'],
   ['products', 'My products'],
   ['fab-jobs', 'Print jobs'],
   ['services', 'Services'],
+  ['messages', 'Messages'],
 ];
 
 interface Summary {
@@ -149,6 +151,7 @@ export function Dashboard({ initialStore }: { initialStore: Store }) {
       {tab === 'products' && <ProductsPanel />}
       {tab === 'fab-jobs' && <FabJobsPanel />}
       {tab === 'services' && <ServicesPanel store={store} />}
+      {tab === 'messages' && <MessagesPanel />}
     </main>
   );
 }

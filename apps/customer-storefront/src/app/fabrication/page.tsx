@@ -18,8 +18,8 @@ const FORMAT_SPECS: Record<ServiceKind, { extensions: string[]; accept: string; 
     formats: ['STL (.stl) - 3D Mesh', '3MF (.3mf) - 3D Print Package', 'STEP / STP (.step) - CAD Solid', 'OBJ (.obj) - 3D Geometry'],
   },
   cnc: {
-    extensions: ['.step', '.stp', '.dxf', '.dwg', '.iges', '.igs', '.svg', '.nc', '.gcode', '.pdf'],
-    accept: '.step,.stp,.dxf,.dwg,.iges,.igs,.svg,.nc,.gcode,.pdf',
+    extensions: ['.step', '.stp', '.dxf', '.iges', '.igs', '.svg', '.nc', '.gcode', '.pdf'],
+    accept: '.step,.stp,.dxf,.iges,.igs,.svg,.nc,.gcode,.pdf',
     description: 'STEP, STP, DXF, IGES, SVG, G-Code, NC, PDF',
     formats: ['STEP (.step/.stp) - 3D CAD Solid', 'DXF (.dxf) - 2D Vector CAD', 'IGES (.iges/.igs) - CAD Surface', 'SVG (.svg) - 2D Vector Profile', 'G-Code / NC (.nc) - Toolpath', 'PDF (.pdf) - Technical Drawing'],
   },

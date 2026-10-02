@@ -153,6 +153,7 @@ locals {
     { name = "MAIL_CONFIGURATION_SET", value = aws_sesv2_configuration_set.main.configuration_set_name },
     { name = "PUBLIC_ORIGIN", value = local.public_origin },
     { name = "VENDOR_ORIGIN", value = local.vendor_origin },
+    { name = "REDIS_URL", value = "redis://${aws_elasticache_cluster.redis.cache_nodes[0].address}:6379" },
   ]
 
   backend_secrets = [

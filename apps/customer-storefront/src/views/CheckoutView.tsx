@@ -340,7 +340,10 @@ export function CheckoutView({ onNavigate }: CheckoutViewProps) {
                 </div>
               )}
               <p className="pt-1 text-xs text-[#7a6274]">
-                Delivery is free above ₹499. The nearest store with your items in stock fulfils the order.
+                Delivery is free above ₹499 on each dispatch. If more than one store is needed, each sends its own part and the fee above is the sum.
+                {resolution && (resolution.deliveries ?? 1) > 1 && (
+                  <span className="mt-1 block font-semibold text-[#34222e]">This order will arrive as {resolution.deliveries} deliveries, from the nearest stores that have stock.</span>
+                )}
               </p>
             </div>
           </div>

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
+import { cacheGet, cacheSet } from '../cache.js';
 import { notFound, parse } from '../errors.js';
 import { logger } from '../logger.js';
 import { pincode } from './schemas.js';
@@ -22,6 +23,8 @@ const limiter = rateLimit({ windowMs: 60_000, limit: 30, standardHeaders: 'draft
 
 // Nominatim is free for light use; results are cached so a PIN is looked up at most once a day.
 async function geocodePincode(pin: string): Promise<GeoResult | null> {
+  const shared = await cacheGet<GeoResult | null>(`geo:pin:${pin}`);
+  if (shared !== undefined) return shared;
   const hit = cache.get(pin);
   if (hit && Date.now() - hit.at < CACHE_MS) return hit.value;
 
@@ -48,6 +51,7 @@ async function geocodePincode(pin: string): Promise<GeoResult | null> {
     };
   }
   cache.set(pin, { at: Date.now(), value });
+  await cacheSet(`geo:pin:${pin}`, value, CACHE_MS / 1000);
   return value;
 }
 

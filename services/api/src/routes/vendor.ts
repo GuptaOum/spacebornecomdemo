@@ -1,5 +1,6 @@
 import express, { Router, type NextFunction, type Request, type Response } from 'express';
 import rateLimit from 'express-rate-limit';
+import { bumpCatalog } from '../cache.js';
 import { z } from 'zod';
 import { currentUser, requireAuth } from '../auth.js';
 import { config } from '../config.js';
@@ -141,7 +142,11 @@ vendorRouter.get('/inventory', requireApprovedStore, async (req, res) => {
   const { rows } = await pool.query(
     `select p.id as "productId", p.sku, p.name, p.mrp, p.category_id as "categoryId",
             case when p.image_key is not null then '/v1/catalog/products/' || p.id::text || '/image' else p.image_url end as "imageUrl",
-            i.price, i.stock, i.is_listed as "isListed", i.updated_at as "updatedAt"
+            i.price, i.stock, i.is_listed as "isListed", i.updated_at as "updatedAt",
+            (select coalesce(sum(oi.quantity), 0)::int
+               from order_items oi join orders o on o.id = oi.order_id
+              where oi.product_id = i.product_id and o.store_id = i.store_id
+                and o.status not in ('pending_payment', 'cancelled', 'expired')) as "unitsSold"
        from inventory i join products p on p.id = i.product_id
       where i.store_id = $1 and ($2::text is null or p.name ilike $2 or p.sku ilike $2)
       order by i.stock asc, p.name
@@ -217,6 +222,7 @@ vendorRouter.put('/inventory/:productId', requireApprovedStore, async (req, res)
         [storeId(req), productId, body.price, body.stock, body.isListed ?? true],
       );
   if (!rows[0]) throw notFound('Inventory item not found');
+  await bumpCatalog();
   res.json({ item: { ...rows[0], price: Number(rows[0].price) } });
 });
 
@@ -227,6 +233,7 @@ vendorRouter.delete('/inventory/:productId', requireApprovedStore, async (req, r
     [storeId(req), productId],
   );
   if (!rowCount) throw notFound('Inventory item not found');
+  await bumpCatalog();
   res.json({ ok: true });
 });
 
@@ -397,4 +404,28 @@ vendorRouter.post('/orders/:id/transition', requireApprovedStore, handoverLimite
     actor: { role: 'vendor', uid: user.uid, storeId: user.storeId },
   });
   res.json({ order });
+});
+
+const messageBody = z.object({ body: z.string().trim().min(1).max(2000) });
+const messageQuery = z.object({ after: z.coerce.number().int().min(0).default(0) });
+
+vendorRouter.get('/messages', requireApprovedStore, async (req, res) => {
+  const q = parse(messageQuery, req.query);
+  const { rows } = await pool.query(
+    `select id, sender_role as "senderRole", body, created_at as "createdAt"
+       from store_messages where store_id = $1 and id > $2 order by id limit 100`,
+    [storeId(req), q.after],
+  );
+  res.json({ messages: rows });
+});
+
+vendorRouter.post('/messages', requireApprovedStore, async (req, res) => {
+  const { body } = parse(messageBody, req.body);
+  const { rows } = await pool.query(
+    `insert into store_messages (store_id, sender_role, sender_id, body)
+     values ($1, 'vendor', $2, $3)
+     returning id, sender_role as "senderRole", body, created_at as "createdAt"`,
+    [storeId(req), currentUser(req).uid, body],
+  );
+  res.status(201).json({ message: rows[0] });
 });

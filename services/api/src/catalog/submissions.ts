@@ -156,7 +156,7 @@ export async function updateSubmission(storeId: string, id: string, input: Updat
        image_embedding = case when $10::text is not null then $13::vector else s.image_embedding end,
        image_embedding_model = case when $10::text is not null then $14 else s.image_embedding_model end,
        review_note = null,
-       status = 'pending', reviewed_by = null, reviewed_at = null
+       status = 'pending'
      where s.id = $1 and s.store_id = $2 and s.status in ('pending', 'rejected')
      returning ${COLUMNS}`,
     [id, storeId, input.name, input.description, input.categoryId, input.brand ?? null, input.mrp, input.price,
@@ -206,6 +206,7 @@ export interface SimilarMatch {
   score: number;
   textScore: number;
   imageScore: number | null;
+  nameScore: number;
   likelyDuplicate: boolean;
 }
 
@@ -246,6 +247,7 @@ function scoreRow(
     score: Math.round(score * 1000) / 1000,
     textScore: Math.round(textScore * 1000) / 1000,
     imageScore: imageScore == null ? null : Math.round(imageScore * 1000) / 1000,
+    nameScore: Math.round(nameSim * 1000) / 1000,
     likelyDuplicate: score >= DUPLICATE_SCORE || nameSim >= 0.85,
   };
 }

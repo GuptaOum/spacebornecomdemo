@@ -1,10 +1,12 @@
 import { createApp } from './app.js';
+import { closeCache, connectCache } from './cache.js';
 import { config } from './config.js';
 import { pool } from './db/pool.js';
 import { logger } from './logger.js';
 
+await connectCache();
 const server = createApp().listen(config.PORT, () => {
-  logger.info({ port: config.PORT, payments: config.paymentsMode }, 'api listening');
+  logger.info({ port: config.PORT, payments: config.paymentsMode, redis: Boolean(config.REDIS_URL) }, 'api listening');
 });
 
 // ALB idle timeout is 60s; keep sockets open slightly longer to avoid 502s on reuse.
@@ -14,7 +16,7 @@ server.headersTimeout = 66_000;
 function shutdown(signal: string) {
   logger.info({ signal }, 'shutting down');
   server.close(() => {
-    pool.end().finally(() => process.exit(0));
+    closeCache().finally(() => pool.end()).finally(() => process.exit(0));
   });
   setTimeout(() => process.exit(1), 15_000).unref();
 }

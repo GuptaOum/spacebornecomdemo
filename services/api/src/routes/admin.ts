@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { bumpCatalog } from '../cache.js';
 import { z } from 'zod';
 import {
   adminScope, currentUser, inScope, requireAdmin, requireAuth, requireGlobalAdmin, requireOwner, revokeSessions,
@@ -11,7 +12,7 @@ import { conflict, notFound, parse } from '../errors.js';
 import { listAllOrders, orderCity, transitionOrder } from '../orders/service.js';
 import { getJobFile, jobCity, listAllJobs, transitionJob } from '../fabrication/service.js';
 import { LISTING_COLUMNS, streamFile } from './fabrication.js';
-import { escapeLike, fabStatusList, pagination, reason, statusList, uuid } from './schemas.js';
+import { escapeLike, fabStatusList, pagination, productBadges, reason, statusList, uuid } from './schemas.js';
 
 export const adminRouter = Router();
 adminRouter.use(requireAuth, requireAdmin);
@@ -141,6 +142,76 @@ adminRouter.get('/stores', async (req, res) => {
   res.json({ stores: rows });
 });
 
+// Everything one store has put on its shelf, so an admin can review a vendor's listings in one place.
+adminRouter.get('/stores/:id/inventory', async (req, res) => {
+  const id = parse(uuid, req.params.id);
+  const cities = scopeCities(adminScope(req));
+  const store = await pool.query(
+    `select s.id, s.name, s.city, s.status, s.is_online as "isOnline" from stores s where s.id = $1 and ${CITY('$2')}`,
+    [id, cities],
+  );
+  if (!store.rows[0]) throw notFound('Store not found');
+  const { rows } = await pool.query(
+    `select p.id as "productId", p.sku, p.name, p.brand, p.category_id as "categoryId", c.name as "categoryName",
+            p.mrp, p.badges, p.is_active as "isActive",
+            i.price, i.stock, i.is_listed as "isListed", i.updated_at as "updatedAt",
+            (select coalesce(sum(oi.quantity), 0)::int
+               from order_items oi join orders o on o.id = oi.order_id
+              where oi.product_id = p.id and o.store_id = i.store_id
+                and o.status not in ('pending_payment', 'cancelled', 'expired')) as "unitsSold",
+            case when p.image_key is not null then '/v1/catalog/products/' || p.id::text || '/image' else p.image_url end as "imageUrl"
+       from inventory i
+       join products p on p.id = i.product_id
+       join categories c on c.id = p.category_id
+      where i.store_id = $1
+      order by i.is_listed desc, c.name, p.name
+      limit 500`,
+    [id],
+  );
+  const pending = await pool.query<{ n: number }>(
+    `select count(*)::int as n from product_submissions where store_id = $1 and status = 'pending'`,
+    [id],
+  );
+  res.json({
+    store: store.rows[0],
+    items: rows,
+    summary: {
+      listed: rows.filter((r) => r.isListed).length,
+      inStock: rows.filter((r) => r.isListed && r.stock > 0).length,
+      lowStock: rows.filter((r) => r.isListed && r.stock > 0 && r.stock <= 5).length,
+      outOfStock: rows.filter((r) => r.isListed && r.stock === 0).length,
+      pendingProposals: pending.rows[0]?.n ?? 0,
+    },
+  });
+});
+
+adminRouter.get('/stores/:id/messages', async (req, res) => {
+  const id = parse(uuid, req.params.id);
+  const after = parse(z.object({ after: z.coerce.number().int().min(0).default(0) }), req.query).after;
+  const store = await pool.query(`select s.id from stores s where s.id = $1 and ${CITY('$2')}`, [id, scopeCities(adminScope(req))]);
+  if (!store.rows[0]) throw notFound('Store not found');
+  const { rows } = await pool.query(
+    `select id, sender_role as "senderRole", body, created_at as "createdAt"
+       from store_messages where store_id = $1 and id > $2 order by id limit 100`,
+    [id, after],
+  );
+  res.json({ messages: rows });
+});
+
+adminRouter.post('/stores/:id/messages', async (req, res) => {
+  const id = parse(uuid, req.params.id);
+  const { body } = parse(z.object({ body: z.string().trim().min(1).max(2000) }), req.body);
+  const store = await pool.query(`select s.id from stores s where s.id = $1 and ${CITY('$2')}`, [id, scopeCities(adminScope(req))]);
+  if (!store.rows[0]) throw notFound('Store not found');
+  const { rows } = await pool.query(
+    `insert into store_messages (store_id, sender_role, sender_id, body)
+     values ($1, 'admin', $2, $3)
+     returning id, sender_role as "senderRole", body, created_at as "createdAt"`,
+    [id, currentUser(req).uid, body],
+  );
+  res.status(201).json({ message: rows[0] });
+});
+
 type StoreDecision = 'approved' | 'rejected' | 'suspended';
 
 async function decideStore(storeId: string, decision: StoreDecision, note: string | null, cities: string[] | null) {
@@ -191,17 +262,22 @@ for (const decision of ['approve', 'reject', 'suspend'] as const) {
 
 const PRODUCT_COLUMNS = `
   id, sku, name, category_id as "categoryId", brand, description, image_url as "imageUrl",
-  mrp, gst_rate as "gstRate", hsn, specs, is_active as "isActive", updated_at as "updatedAt"`;
+  mrp, gst_rate as "gstRate", hsn, specs, badges, ('our_pick' = any(badges)) as "isChoice",
+  is_active as "isActive", updated_at as "updatedAt"`;
 
 adminRouter.get('/products', async (req, res) => {
   const q = parse(pagination.extend({ q: z.string().trim().max(80).optional() }), req.query);
   const search = q.q ? `%${escapeLike(q.q)}%` : null;
   const { rows } = await pool.query(
     `select ${PRODUCT_COLUMNS},
-            (p.specs->>'isChoice' = 'true') as "isChoice",
             (select count(*)::int from inventory i where i.product_id = p.id and i.is_listed) as "storeCount",
             coalesce(
-              (select json_agg(json_build_object('storeId', s.id, 'storeName', s.name, 'city', s.city, 'price', i.price, 'stock', i.stock))
+              (select json_agg(json_build_object(
+                 'storeId', s.id, 'storeName', s.name, 'city', s.city, 'price', i.price, 'stock', i.stock,
+                 'unitsSold', (select coalesce(sum(oi.quantity), 0)::int from order_items oi join orders o on o.id = oi.order_id
+                                where oi.product_id = p.id and o.store_id = s.id
+                                  and o.status not in ('pending_payment', 'cancelled', 'expired'))
+               )
                  from inventory i join stores s on s.id = i.store_id where i.product_id = p.id and i.is_listed),
               '[]'::json
             ) as "stores",
@@ -227,21 +303,21 @@ const productBody = z.object({
   hsn: z.string().trim().regex(/^\d{4,8}$/).optional(),
   specs: z.record(z.string().max(200)).default({}),
   isActive: z.boolean().default(true),
-  isChoice: z.boolean().optional(),
+  badges: productBadges.default([]),
 });
 
 adminRouter.post('/products', requireGlobalAdmin, async (req, res) => {
   const b = parse(productBody, req.body);
-  const initialSpecs = { ...(b.specs || {}), ...(b.isChoice !== undefined ? { isChoice: String(b.isChoice) } : {}) };
   const { rows } = await pool.query(
-    `insert into products (sku, name, category_id, brand, description, image_url, mrp, gst_rate, hsn, specs, is_active)
-     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+    `insert into products (sku, name, category_id, brand, description, image_url, mrp, gst_rate, hsn, specs, is_active, badges)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
      on conflict (sku) do nothing
-     returning ${PRODUCT_COLUMNS}, (specs->>'isChoice' = 'true') as "isChoice"`,
+     returning ${PRODUCT_COLUMNS}`,
     [b.sku, b.name, b.categoryId, b.brand ?? null, b.description, b.imageUrl ?? null, b.mrp, b.gstRate, b.hsn ?? null,
-      JSON.stringify(initialSpecs), b.isActive],
+      JSON.stringify(b.specs), b.isActive, b.badges],
   );
   if (!rows[0]) throw conflict(`SKU ${b.sku} already exists`);
+  await bumpCatalog();
   await audit(req, 'product.create', { type: 'product', id: rows[0].id }, { sku: b.sku, name: b.name });
   res.status(201).json({ product: rows[0] });
 });
@@ -250,57 +326,40 @@ adminRouter.patch('/products/:id', requireGlobalAdmin, async (req, res) => {
   const b = parse(productBody.partial().omit({ sku: true }), req.body);
   const targetId = parse(uuid, req.params.id);
 
-  let specsArg: string | null = null;
-  if (b.specs || b.isChoice !== undefined) {
-    const { rows: current } = await pool.query<{ specs: Record<string, unknown> }>(
-      'select specs from products where id = $1',
-      [targetId],
-    );
-    const mergedSpecs = {
-      ...(current[0]?.specs || {}),
-      ...(b.specs || {}),
-      ...(b.isChoice !== undefined ? { isChoice: String(b.isChoice) } : {}),
-    };
-    specsArg = JSON.stringify(mergedSpecs);
-  }
-
   const { rows } = await pool.query(
     `update products set
        name = coalesce($2, name), category_id = coalesce($3, category_id), brand = coalesce($4, brand),
        description = coalesce($5, description), image_url = coalesce($6, image_url), mrp = coalesce($7, mrp),
        gst_rate = coalesce($8, gst_rate), hsn = coalesce($9, hsn),
-       specs = coalesce($10, specs),
+       specs = coalesce(specs, '{}'::jsonb) || coalesce($10::jsonb, '{}'::jsonb),
        is_active = coalesce($11, is_active),
+       badges = coalesce($12::text[], badges),
        -- New text means a stale search vector; the worker re-embeds it within a minute.
        text_embedding = case when $2::text is not null or $5::text is not null then null else text_embedding end
      where id = $1
-     returning ${PRODUCT_COLUMNS}, (specs->>'isChoice' = 'true') as "isChoice"`,
+     returning ${PRODUCT_COLUMNS}`,
     [targetId, b.name ?? null, b.categoryId ?? null, b.brand ?? null, b.description ?? null,
-      b.imageUrl ?? null, b.mrp ?? null, b.gstRate ?? null, b.hsn ?? null, specsArg,
-      b.isActive ?? null],
+      b.imageUrl ?? null, b.mrp ?? null, b.gstRate ?? null, b.hsn ?? null, b.specs ? JSON.stringify(b.specs) : null,
+      b.isActive ?? null, b.badges ?? null],
   );
   if (!rows[0]) throw notFound('Product not found');
+  await bumpCatalog();
   await audit(req, 'product.update', { type: 'product', id: rows[0].id }, { changed: Object.keys(b) });
   res.json({ product: rows[0] });
 });
 
-adminRouter.post('/products/:id/toggle-choice', requireGlobalAdmin, async (req, res) => {
+// Replace the trust badges on a product. Sending [] clears them.
+adminRouter.put('/products/:id/badges', requireGlobalAdmin, async (req, res) => {
   const targetId = parse(uuid, req.params.id);
-  const { rows: current } = await pool.query<{ specs: Record<string, unknown> }>(
-    'select specs from products where id = $1',
-    [targetId],
-  );
-  if (!current[0]) throw notFound('Product not found');
-  const nowChoice = current[0].specs?.isChoice !== 'true';
-  const updatedSpecs = { ...(current[0].specs || {}), isChoice: String(nowChoice) };
-
+  const { badges } = parse(z.object({ badges: productBadges }), req.body);
   const { rows } = await pool.query(
-    `update products set specs = $2 where id = $1
-     returning ${PRODUCT_COLUMNS}, (specs->>'isChoice' = 'true') as "isChoice"`,
-    [targetId, JSON.stringify(updatedSpecs)],
+    `update products set badges = $2::text[] where id = $1 returning ${PRODUCT_COLUMNS}`,
+    [targetId, badges],
   );
-  await audit(req, 'product.toggle_choice', { type: 'product', id: targetId }, { isChoice: nowChoice });
-  res.json({ product: rows[0], isChoice: nowChoice });
+  if (!rows[0]) throw notFound('Product not found');
+  await bumpCatalog();
+  await audit(req, 'product.badges', { type: 'product', id: targetId }, { badges });
+  res.json({ product: rows[0] });
 });
 
 // ---------------------------------------------------------------------------------------------

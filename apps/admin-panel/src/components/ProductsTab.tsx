@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useMemo, type FormEvent } from 'react';
 import { api } from '@spaceborn/web-core/api';
 import { useFeedback } from '@spaceborn/web-core/feedback';
 import { formatInr } from '@spaceborn/web-core/format';
-import type { Category } from '@spaceborn/web-core/types';
+import { PRODUCT_BADGE_IDS, PRODUCT_BADGES, type Category, type ProductBadge } from '@spaceborn/web-core/types';
 import { useLoad } from '@spaceborn/web-core/use-load';
 
 interface StoreStockInfo {
@@ -13,6 +13,7 @@ interface StoreStockInfo {
   city: string;
   price: number;
   stock: number;
+  unitsSold?: number;
 }
 
 interface AdminProduct {
@@ -28,7 +29,7 @@ interface AdminProduct {
   hsn?: string | null;
   imageUrl?: string | null;
   description?: string;
-  isChoice?: boolean;
+  badges: ProductBadge[];
   stores?: StoreStockInfo[];
   vendorSubmissionsCount?: number;
 }
@@ -43,10 +44,36 @@ const emptyForm = {
   hsn: '',
   imageUrl: '',
   description: '',
-  isChoice: false,
+  badges: [] as ProductBadge[],
 };
 
-type SegregationTab = 'all' | 'direct' | 'vendor' | 'choice';
+type SegregationTab = 'all' | 'direct' | 'vendor' | 'badged';
+
+/** One chip per badge; the ones on the product are filled in. */
+function BadgeChips({ value, onToggle, disabled, size = 'sm' }: { value: ProductBadge[]; onToggle: (b: ProductBadge) => void; disabled?: boolean; size?: 'sm' | 'xs' }) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {PRODUCT_BADGE_IDS.map((b) => {
+        const on = value.includes(b);
+        return (
+          <button
+            key={b}
+            type="button"
+            disabled={disabled}
+            onClick={() => onToggle(b)}
+            title={PRODUCT_BADGES[b].hint}
+            aria-pressed={on}
+            className={`rounded-full border font-semibold transition-colors disabled:opacity-50 ${size === 'xs' ? 'px-2 py-0.5 text-[11px]' : 'px-2.5 py-1 text-xs'} ${
+              on ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 bg-white text-slate-600 hover:border-slate-500 hover:text-slate-900'
+            }`}
+          >
+            {PRODUCT_BADGES[b].label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 export function ProductsTab() {
   const { toast } = useFeedback();
@@ -92,7 +119,7 @@ export function ProductsTab() {
   const totalCount = products.data?.length ?? 0;
   const directCount = products.data?.filter((p) => (!p.stores || p.stores.length === 0) && (!p.vendorSubmissionsCount || p.vendorSubmissionsCount === 0)).length ?? 0;
   const vendorCount = products.data?.filter((p) => (p.stores && p.stores.length > 0) || (p.vendorSubmissionsCount && p.vendorSubmissionsCount > 0)).length ?? 0;
-  const choiceCount = products.data?.filter((p) => p.isChoice).length ?? 0;
+  const badgedCount = products.data?.filter((p) => p.badges.length > 0).length ?? 0;
 
   // Filtered products list based on segregation tab, store filter, and category filter
   const displayedProducts = useMemo(() => {
@@ -105,8 +132,8 @@ export function ProductsTab() {
       } else if (segregation === 'vendor') {
         const isVendor = (p.stores && p.stores.length > 0) || (p.vendorSubmissionsCount && p.vendorSubmissionsCount > 0);
         if (!isVendor) return false;
-      } else if (segregation === 'choice') {
-        if (!p.isChoice) return false;
+      } else if (segregation === 'badged') {
+        if (p.badges.length === 0) return false;
       }
 
       // 2. Specific store filter
@@ -136,7 +163,7 @@ export function ProductsTab() {
       hsn: p.hsn ?? '',
       imageUrl: p.imageUrl ?? '',
       description: p.description ?? '',
-      isChoice: Boolean(p.isChoice),
+      badges: p.badges ?? [],
     });
     setFormError(null);
     formRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -148,23 +175,22 @@ export function ProductsTab() {
     setFormError(null);
   };
 
-  const toggleChoice = async (product: AdminProduct) => {
-    const wanted = !product.isChoice;
+  const toggleBadge = async (product: AdminProduct, badge: ProductBadge) => {
+    const before = product.badges;
+    const wanted = before.includes(badge) ? before.filter((b) => b !== badge) : [...before, badge];
     setBusyId(product.id);
-    // Optimistic UI update
-    products.mutate((list) => list?.map((p) => (p.id === product.id ? { ...p, isChoice: wanted } : p)) ?? list);
+    products.mutate((list) => list?.map((p) => (p.id === product.id ? { ...p, badges: wanted } : p)) ?? list);
     try {
-      const res = await api<{ product: AdminProduct }>(`/admin/products/${product.id}/toggle-choice`, { method: 'POST' });
-      products.mutate((list) => list?.map((p) => (p.id === product.id ? { ...p, isChoice: res.product.isChoice } : p)) ?? list);
+      const res = await api<{ product: AdminProduct }>(`/admin/products/${product.id}/badges`, { method: 'PUT', body: { badges: wanted } });
+      products.mutate((list) => list?.map((p) => (p.id === product.id ? { ...p, badges: res.product.badges } : p)) ?? list);
       toast(
-        wanted
-          ? `⭐ Highlighted "${product.name}" as Spaceborn's Choice on storefront!`
-          : `Removed Spaceborn's Choice badge from "${product.name}"`,
-        'success'
+        wanted.includes(badge)
+          ? `"${PRODUCT_BADGES[badge].label}" now shows on ${product.name}`
+          : `"${PRODUCT_BADGES[badge].label}" removed from ${product.name}`,
+        'success',
       );
     } catch (err) {
-      // Revert on error
-      products.mutate((list) => list?.map((p) => (p.id === product.id ? { ...p, isChoice: !wanted } : p)) ?? list);
+      products.mutate((list) => list?.map((p) => (p.id === product.id ? { ...p, badges: before } : p)) ?? list);
       toast((err as Error).message, 'error');
     } finally {
       setBusyId(null);
@@ -203,11 +229,11 @@ export function ProductsTab() {
             hsn: form.hsn.trim() || undefined,
             imageUrl: form.imageUrl.trim() || undefined,
             description: form.description.trim(),
-            isChoice: form.isChoice,
+            badges: form.badges,
           },
         });
         products.mutate((list) =>
-          list?.map((p) => (p.id === editingProduct.id ? { ...p, ...r.product, isChoice: form.isChoice, storeCount: p.storeCount, stores: p.stores } : p)) ?? [],
+          list?.map((p) => (p.id === editingProduct.id ? { ...p, ...r.product, storeCount: p.storeCount, stores: p.stores } : p)) ?? [],
         );
         toast(`${r.product.name} updated in the catalog`, 'success');
         cancelEdit();
@@ -224,11 +250,11 @@ export function ProductsTab() {
             hsn: form.hsn.trim() || undefined,
             imageUrl: form.imageUrl.trim() || undefined,
             description: form.description.trim(),
-            isChoice: form.isChoice,
+            badges: form.badges,
           },
         });
         setForm(emptyForm);
-        products.mutate((list) => [{ ...r.product, isChoice: form.isChoice, storeCount: 0, stores: [] }, ...(list ?? [])]);
+        products.mutate((list) => [{ ...r.product, storeCount: 0, stores: [] }, ...(list ?? [])]);
         toast(`${r.product.name} added to the catalog`, 'success');
       }
     } catch (err) {
@@ -272,13 +298,11 @@ export function ProductsTab() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-amber-200 bg-linear-to-br from-amber-50 to-amber-100/40 p-3.5 shadow-2xs">
-          <p className="text-xs font-semibold text-amber-800 uppercase tracking-wider flex items-center gap-1">
-            <span>⭐ Spaceborn Choice</span>
-          </p>
+        <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs">
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Badged</p>
           <div className="mt-1 flex items-baseline gap-2">
-            <span className="text-2xl font-black text-amber-900">{choiceCount}</span>
-            <span className="text-xs text-amber-700 font-medium">flagship highlighted</span>
+            <span className="text-2xl font-black text-slate-900">{badgedCount}</span>
+            <span className="text-xs text-slate-400">carry a trust badge</span>
           </div>
         </div>
       </div>
@@ -333,16 +357,16 @@ export function ProductsTab() {
 
               <button
                 type="button"
-                onClick={() => setSegregation('choice')}
-                className={`rounded-lg px-3 py-1.5 text-xs font-black transition-all flex items-center gap-1.5 ${
-                  segregation === 'choice'
-                    ? 'bg-[#1e293b] text-[#f8cb46] shadow-xs border border-[#f8cb46]/40'
-                    : 'text-slate-700 hover:text-amber-800 hover:bg-amber-50 border border-transparent'
+                onClick={() => setSegregation('badged')}
+                className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all flex items-center gap-1.5 ${
+                  segregation === 'badged'
+                    ? 'bg-slate-900 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                 }`}
               >
-                <span>⭐ Spaceborn Choice</span>
-                <span className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${segregation === 'choice' ? 'bg-amber-400 text-slate-900' : 'bg-amber-200 text-amber-900'}`}>
-                  {choiceCount}
+                <span>Badged</span>
+                <span className={`rounded-full px-1.5 py-0.2 text-[10px] ${segregation === 'badged' ? 'bg-slate-700 text-white' : 'bg-slate-200 text-slate-700'}`}>
+                  {badgedCount}
                 </span>
               </button>
             </div>
@@ -423,13 +447,6 @@ export function ProductsTab() {
                     {/* Product Details & Attributions */}
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-1.5 mb-1">
-                        {/* Spaceborn Choice Badge */}
-                        {p.isChoice && (
-                          <span className="inline-flex items-center gap-1 bg-[#1e293b] text-[#f8cb46] text-[10px] font-black px-2 py-0.5 rounded shadow-2xs border border-[#f8cb46]/30 uppercase tracking-wider">
-                            <span>⭐</span> Spaceborn's Choice
-                          </span>
-                        )}
-
                         {/* Vendor Segregation Tag */}
                         {isDirect ? (
                           <span className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 border border-indigo-200 text-[10px] font-bold px-2 py-0.5 rounded">
@@ -476,21 +493,8 @@ export function ProductsTab() {
 
                     {/* Operational Action Buttons (Admin Fast Triage) */}
                     <div className="flex flex-wrap items-center gap-2 shrink-0">
-                      {/* Flipkart-Style Spaceborn Choice Toggle */}
-                      <button
-                        type="button"
-                        disabled={busyId === p.id}
-                        onClick={() => void toggleChoice(p)}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer disabled:opacity-50 ${
-                          p.isChoice
-                            ? 'bg-[#1e293b] text-[#f8cb46] border border-[#f8cb46]/40 hover:bg-[#0f172a] shadow-2xs'
-                            : 'bg-white text-slate-600 border border-slate-300 hover:text-amber-600 hover:border-amber-400 hover:bg-amber-50/50'
-                        }`}
-                        title={p.isChoice ? "Click to remove Spaceborn's Choice" : "Promote as Spaceborn's Choice"}
-                      >
-                        <span>{p.isChoice ? '⭐' : '☆'}</span>
-                        <span>{p.isChoice ? 'Choice Active' : 'Make Choice'}</span>
-                      </button>
+                      {/* Trust badges customers see on this product */}
+                      <BadgeChips value={p.badges} onToggle={(b) => void toggleBadge(p, b)} disabled={busyId === p.id} size="xs" />
 
                       {/* Edit Product */}
                       <button
@@ -531,7 +535,7 @@ export function ProductsTab() {
                             </span>
                             <div className="text-right">
                               <span className="font-bold text-slate-900">{formatInr(s.price)}</span>
-                              <span className="ml-1.5 text-[11px] font-medium text-emerald-700">({s.stock} in stock)</span>
+                              <span className="ml-1.5 text-[11px] font-medium text-emerald-700">({s.stock} available, {s.unitsSold ?? 0} sold)</span>
                             </div>
                           </div>
                         ))}
@@ -567,23 +571,14 @@ export function ProductsTab() {
 
           {formError && <p className="rounded-lg bg-red-50 p-2 text-xs text-red-700">{formError}</p>}
 
-          {/* Flipkart-Style Spaceborn's Choice Selector in Form */}
-          <label className="flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-50/70 p-2.5 text-xs font-bold text-amber-950 cursor-pointer hover:bg-amber-100/60 transition-colors">
-            <input
-              type="checkbox"
-              checked={form.isChoice}
-              onChange={(e) => setForm({ ...form, isChoice: e.target.checked })}
-              className="h-4 w-4 rounded border-amber-400 text-amber-600 focus:ring-amber-500"
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5">
+            <p className="text-xs font-semibold text-slate-600">Trust badges</p>
+            <p className="mb-2 text-[11px] text-slate-500">Shown to customers on the card and the product page. Pick any that apply.</p>
+            <BadgeChips
+              value={form.badges}
+              onToggle={(b) => setForm({ ...form, badges: form.badges.includes(b) ? form.badges.filter((x) => x !== b) : [...form.badges, b] })}
             />
-            <div className="flex-1">
-              <span className="flex items-center gap-1">
-                <span>⭐</span> Spaceborn's Choice
-              </span>
-              <p className="text-[11px] font-normal text-amber-800 mt-0.5">
-                Highlight this product with the prominent Flipkart-style choice badge on the storefront.
-              </p>
-            </div>
-          </label>
+          </div>
 
           <label className="block text-xs font-semibold text-slate-600">
             SKU {editingProduct && <span className="font-normal text-slate-400">(immutable)</span>}

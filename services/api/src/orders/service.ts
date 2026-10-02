@@ -8,8 +8,8 @@ import { logger } from '../logger.js';
 import { enqueue } from '../outbox.js';
 import { markFabPaid } from '../fabrication/service.js';
 import { createProviderOrder } from '../payments/razorpay.js';
-import { availabilityNearby, classifyShortfall, rankStores } from './fulfilment.js';
-import { etaMinutes, MAX_ITEMS_PER_LINE, priceOrder, RESERVATION_MINUTES, toPaise } from './pricing.js';
+import { allocateNearest, availabilityNearby, classifyShortfall, rankStores, type StoreSlice } from './fulfilment.js';
+import { deliveryFee, etaMinutes, MAX_ITEMS_PER_LINE, PLATFORM_FEE, priceOrder, RESERVATION_MINUTES, toPaise } from './pricing.js';
 import { canTransition, HOLDS_STOCK, PAID_STATUSES, type Actor, type OrderStatus } from './status.js';
 
 export interface DeliveryAddress {
@@ -46,7 +46,8 @@ const ORDER_SELECT = `
          o.grand_total as "grandTotal", o.delivery_address as "deliveryAddress", o.distance_km as "distanceKm",
          o.eta_minutes as "etaMinutes", o.handover_otp as "handoverOtp", o.reserved_until as "reservedUntil",
          o.cancel_reason as "cancelReason", o.placed_at as "placedAt", o.accepted_at as "acceptedAt",
-         o.delivered_at as "deliveredAt", o.created_at as "createdAt", p.status as "paymentStatus",
+         o.delivered_at as "deliveredAt", o.created_at as "createdAt", o.checkout_id as "checkoutId",
+         p.status as "paymentStatus",
          coalesce((
            select json_agg(json_build_object(
              'productId', oi.product_id, 'name', oi.name, 'sku', oi.sku, 'imageUrl', oi.image_url,
@@ -56,7 +57,7 @@ const ORDER_SELECT = `
          ), '[]'::json) as items
     from orders o
     join stores s on s.id = o.store_id
-    left join payments p on p.order_id = o.id`;
+    left join payments p on p.order_id = o.id or (o.checkout_id is not null and p.checkout_id = o.checkout_id)`;
 
 export type OrderView = Record<string, unknown> & { id: string; status: OrderStatus; handoverOtp?: string };
 
@@ -158,7 +159,9 @@ export async function checkoutPayload(orderId: string, customerId: string) {
   const order = await getOrder(pool, orderId, { role: 'customer', uid: customerId });
   const { rows } = await pool.query(
     `select provider, provider_order_id as "providerOrderId", amount_paise as "amountPaise", status
-       from payments where order_id = $1`,
+       from payments
+      where order_id = $1
+         or checkout_id = (select checkout_id from orders where id = $1)`,
     [orderId],
   );
   const payment = rows[0];
@@ -172,20 +175,129 @@ export async function checkoutPayload(orderId: string, customerId: string) {
   };
 }
 
+async function writeSplit(c: Db, slices: StoreSlice[], input: PlaceOrderInput) {
+  const round2 = (n: number) => Math.round(n * 100) / 100;
+  const locked = [...slices].sort((a, b) => a.storeId.localeCompare(b.storeId));
+  for (const slice of locked) {
+    const store = await c.query(
+      `select id from stores where id = $1 and status = 'approved' and is_online for share`,
+      [slice.storeId],
+    );
+    if (!store.rows[0]) throw unprocessable('store_unavailable', 'A store near you just stopped taking orders. Please try again.');
+    const productIds = slice.lines.map((line) => line.productId);
+    const inventory = await c.query<{ product_id: string; stock: number }>(
+      `select product_id, stock from inventory
+        where store_id = $1 and product_id = any($2::uuid[])
+        order by product_id
+        for update`,
+      [slice.storeId, productIds],
+    );
+    const stock = new Map(inventory.rows.map((row) => [row.product_id, row.stock]));
+    for (const line of slice.lines) {
+      if ((stock.get(line.productId) ?? 0) < line.quantity) {
+        throw conflict('Some items in your cart are no longer available');
+      }
+    }
+    await c.query(
+      `update inventory i set stock = i.stock - x.qty
+         from unnest($2::uuid[], $3::int[]) as x(product_id, qty)
+        where i.store_id = $1 and i.product_id = x.product_id`,
+      [slice.storeId, productIds, slice.lines.map((line) => line.quantity)],
+    );
+  }
+
+  let itemsTotal = 0;
+  let deliverySum = 0;
+  const parts = slices.map((slice) => {
+    const items = round2(slice.lines.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0));
+    const fee = deliveryFee(items, slice.distanceKm);
+    itemsTotal += items;
+    deliverySum += fee;
+    return { slice, items, fee };
+  });
+  const grandTotal = round2(itemsTotal + deliverySum + PLATFORM_FEE);
+  const checkout = await c.query<{ id: string }>(
+    `insert into checkouts (customer_id, idempotency_key, items_total, delivery_fee, platform_fee, grand_total, delivery_address)
+     values ($1, $2, $3, $4, $5, $6, $7)
+     returning id`,
+    [
+      input.customerId,
+      input.idempotencyKey,
+      round2(itemsTotal),
+      round2(deliverySum),
+      PLATFORM_FEE,
+      grandTotal,
+      JSON.stringify(input.address),
+    ],
+  );
+  const checkoutId = checkout.rows[0]!.id;
+  let firstId = '';
+  for (const [index, part] of parts.entries()) {
+    const inserted = await c.query<{ id: string }>(
+      `insert into orders (customer_id, store_id, checkout_id, items_total, delivery_fee, platform_fee, grand_total,
+                           delivery_address, delivery_lat, delivery_lng, distance_km, eta_minutes,
+                           handover_otp, reserved_until, idempotency_key)
+       values ($1, $2, $3, $4, $5, 0, $6, $7, $8, $9, $10, $11, $12, now() + make_interval(mins => $13), $14)
+       returning id`,
+      [
+        input.customerId,
+        part.slice.storeId,
+        checkoutId,
+        part.items,
+        part.fee,
+        round2(part.items + part.fee),
+        JSON.stringify(input.address),
+        input.address.latitude,
+        input.address.longitude,
+        Math.round(part.slice.distanceKm * 100) / 100,
+        etaMinutes(part.slice.prepMinutes, part.slice.distanceKm),
+        crypto.randomInt(1000, 10000).toString(),
+        RESERVATION_MINUTES,
+        `${input.idempotencyKey}:${index + 1}`,
+      ],
+    );
+    const id = inserted.rows[0]!.id;
+    if (!firstId) firstId = id;
+    const lines = part.slice.lines;
+    await c.query(
+      `insert into order_items (order_id, product_id, name, sku, image_url, unit_price, quantity, line_total)
+       select $1, x.product_id, x.name, x.sku, x.image_url, x.unit_price, x.quantity, x.unit_price * x.quantity
+         from unnest($2::uuid[], $3::text[], $4::text[], $5::text[], $6::numeric[], $7::int[])
+           as x(product_id, name, sku, image_url, unit_price, quantity)`,
+      [
+        id,
+        lines.map((line) => line.productId),
+        lines.map((line) => line.name),
+        lines.map((line) => line.sku),
+        lines.map((line) => line.imageUrl),
+        lines.map((line) => line.unitPrice),
+        lines.map((line) => line.quantity),
+      ],
+    );
+    await recordStatus(c, id, null, 'pending_payment', { role: 'customer', uid: input.customerId });
+  }
+  return { orderId: firstId, grandTotal, checkoutId };
+}
+
 export async function placeOrder(input: PlaceOrderInput) {
   const quantities = mergeLines(input.items);
   const productIds = [...quantities.keys()];
 
   const existing = await pool.query<{ id: string }>(
-    'select id from orders where customer_id = $1 and idempotency_key = $2',
+    `select o.id from orders o
+       left join checkouts c on c.id = o.checkout_id
+      where o.customer_id = $1 and (o.idempotency_key = $2 or c.idempotency_key = $2)
+      order by o.created_at
+      limit 1`,
     [input.customerId, input.idempotencyKey],
   );
   if (existing.rows[0]) return checkoutPayload(existing.rows[0].id, input.customerId);
 
   let orderId: string;
   let grandTotal: number;
+  let checkoutId: string | null = null;
   try {
-    ({ orderId, grandTotal } = await withTransaction(async (c) => {
+    ({ orderId, grandTotal, checkoutId } = await withTransaction(async (c) => {
       // Locks the store and its inventory, then re-checks under those locks: `rankStores` reads
       // without locks, so the winner can go offline or sell out before we get here.
       //
@@ -248,6 +360,10 @@ export async function placeOrder(input: PlaceOrderInput) {
 
       const complete = ranked.filter((r) => r.coverable === quantities.size);
       if (!complete.length) {
+        const alloc = await allocateNearest(c, input.address.latitude, input.address.longitude, quantities);
+        if (!alloc.short.length && alloc.slices.length > 0) {
+          return writeSplit(c, alloc.slices, input);
+        }
         const nearby = await availabilityNearby(c, input.address.latitude, input.address.longitude, productIds);
         const best = ranked[0]!;
         const offered = await c.query<{ product_id: string; stock: number }>(
@@ -256,13 +372,14 @@ export async function placeOrder(input: PlaceOrderInput) {
           [best.storeId, productIds],
         );
         const items = classifyShortfall(quantities, new Map(offered.rows.map((r) => [r.product_id, r.stock])), nearby);
-        const splits = items.filter((i) => i.reason === 'split_required').length;
-        throw conflict(
-          splits
-            ? 'These items are nearby but no single store has all of them'
-            : 'Some items in your cart are not available near you',
-          { code: 'partial_availability', storeId: best.storeId, items },
-        );
+        throw conflict('Some items in your cart are not available near you', {
+          code: 'partial_availability',
+          storeId: best.storeId,
+          items: items.map((item) => ({
+            ...item,
+            available: alloc.short.find((s) => s.productId === item.productId)?.available ?? item.availableNearby,
+          })),
+        });
       }
 
       // Walk the ranked candidates so one store selling out doesn't fail a serviceable cart.
@@ -336,7 +453,7 @@ export async function placeOrder(input: PlaceOrderInput) {
         ],
       );
       await recordStatus(c, id, null, 'pending_payment', { role: 'customer', uid: input.customerId });
-      return { orderId: id, grandTotal: pricing.grandTotal };
+      return { orderId: id, grandTotal: pricing.grandTotal, checkoutId: null as string | null };
     }));
   } catch (err) {
     if (err instanceof IdempotentReplay) {
@@ -354,12 +471,17 @@ export async function placeOrder(input: PlaceOrderInput) {
     const providerOrderId =
       config.paymentsMode === 'razorpay' ? (await createProviderOrder(orderId, amountPaise)).providerOrderId : `mock_${orderId}`;
     await pool.query(
-      'insert into payments (order_id, provider, provider_order_id, amount_paise) values ($1, $2, $3, $4)',
-      [orderId, config.paymentsMode, providerOrderId, amountPaise],
+      `insert into payments (order_id, checkout_id, provider, provider_order_id, amount_paise) values ($1, $2, $3, $4, $5)`,
+      [checkoutId ? null : orderId, checkoutId, config.paymentsMode, providerOrderId, amountPaise],
     );
   } catch (err) {
-    logger.error({ err, orderId }, 'payment initialisation failed, releasing stock');
-    await transitionOrder({ orderId, to: 'cancelled', actor: { role: 'system', uid: null }, reason: 'Payment could not be started' });
+    logger.error({ err, orderId, checkoutId }, 'payment initialisation failed, releasing stock');
+    const related = checkoutId
+      ? await pool.query<{ id: string }>('select id from orders where checkout_id = $1', [checkoutId])
+      : { rows: [{ id: orderId }] };
+    for (const row of related.rows) {
+      await transitionOrder({ orderId: row.id, to: 'cancelled', actor: { role: 'system', uid: null }, reason: 'Payment could not be started' });
+    }
     throw new HttpError(502, 'payment_unavailable', 'Payments are temporarily unavailable. Please try again.');
   }
 
@@ -368,12 +490,45 @@ export async function placeOrder(input: PlaceOrderInput) {
 
 export async function markPaid(providerOrderId: string, providerPaymentId: string) {
   return withTransaction(async (c) => {
-    const target = await c.query<{ order_id: string | null; fab_job_id: string | null }>(
-      'select order_id, fab_job_id from payments where provider_order_id = $1',
+    const target = await c.query<{ order_id: string | null; fab_job_id: string | null; checkout_id: string | null }>(
+      'select order_id, fab_job_id, checkout_id from payments where provider_order_id = $1',
       [providerOrderId],
     );
     if (!target.rows[0]) throw notFound('Payment not found');
-    const { order_id: targetOrderId, fab_job_id: fabJobId } = target.rows[0];
+    const { order_id: targetOrderId, fab_job_id: fabJobId, checkout_id: checkoutId } = target.rows[0];
+
+    if (checkoutId) {
+      const orders = await c.query<{ id: string; status: string }>(
+        'select id, status from orders where checkout_id = $1 order by id for update',
+        [checkoutId],
+      );
+      const { rows: paymentRows } = await c.query(
+        'select id as payment_id, status as payment_status, amount_paise from payments where provider_order_id = $1 for update',
+        [providerOrderId],
+      );
+      const payment = paymentRows[0];
+      if (payment.payment_status !== 'created' && payment.payment_status !== 'failed') {
+        return { orderId: orders.rows[0]?.id ?? checkoutId, alreadyProcessed: true };
+      }
+      const system: ActorContext = { role: 'system', uid: null };
+      if (orders.rows.length > 0 && orders.rows.every((order) => order.status === 'pending_payment')) {
+        await c.query(`update payments set status = 'captured', provider_payment_id = $2 where id = $1`, [payment.payment_id, providerPaymentId]);
+        for (const order of orders.rows) {
+          await c.query(`update orders set status = 'placed', placed_at = now(), reserved_until = null where id = $1`, [order.id]);
+          await recordStatus(c, order.id, 'pending_payment', 'placed', system, 'Payment received');
+          await enqueue(c, 'order.placed', { orderId: order.id });
+        }
+        return { orderId: orders.rows[0]!.id, alreadyProcessed: false };
+      }
+      await c.query(`update payments set status = 'refund_pending', provider_payment_id = $2 where id = $1`, [payment.payment_id, providerPaymentId]);
+      await enqueue(c, 'refund.requested', {
+        paymentId: payment.payment_id,
+        orderId: orders.rows[0]?.id ?? null,
+        providerPaymentId,
+        amountPaise: payment.amount_paise,
+      });
+      return { orderId: orders.rows[0]?.id ?? checkoutId, alreadyProcessed: false };
+    }
 
     // Lock the order/job before the payment, the same order cancellations use, so the two cannot deadlock.
     const parent = fabJobId
@@ -437,9 +592,10 @@ export interface TransitionInput {
 export async function transitionOrder(input: TransitionInput, db?: pg.PoolClient) {
   const run = async (c: pg.PoolClient) => {
     const { rows } = await c.query(
-      `select o.id, o.status, o.customer_id, o.store_id, o.handover_otp,
+      `select o.id, o.status, o.customer_id, o.store_id, o.handover_otp, o.grand_total, o.checkout_id,
               p.id as payment_id, p.status as payment_status, p.provider_payment_id, p.amount_paise
-         from orders o left join payments p on p.order_id = o.id
+         from orders o
+         left join payments p on p.order_id = o.id or (o.checkout_id is not null and p.checkout_id = o.checkout_id)
         where o.id = $1
         for update of o`,
       [input.orderId],
@@ -480,12 +636,21 @@ export async function transitionOrder(input: TransitionInput, db?: pg.PoolClient
     await recordStatus(c, order.id, from, input.to, actor, input.reason);
 
     if (input.to === 'cancelled' && PAID_STATUSES.includes(from) && order.payment_status === 'captured') {
-      await c.query(`update payments set status = 'refund_pending' where order_id = $1`, [order.id]);
+      const others = order.checkout_id
+        ? await c.query<{ n: number }>(
+            `select count(*)::int as n from orders
+              where checkout_id = $1 and id <> $2 and status not in ('cancelled', 'expired')`,
+            [order.checkout_id, order.id],
+          )
+        : { rows: [{ n: 0 }] };
+      const partial = (others.rows[0]?.n ?? 0) > 0;
+      if (!partial) await c.query(`update payments set status = 'refund_pending' where id = $1`, [order.payment_id]);
       await enqueue(c, 'refund.requested', {
         paymentId: order.payment_id,
         orderId: order.id,
         providerPaymentId: order.provider_payment_id,
-        amountPaise: order.amount_paise,
+        amountPaise: partial ? toPaise(Number(order.grand_total)) : order.amount_paise,
+        partial,
       });
     }
     await enqueue(c, 'order.status_changed', { orderId: order.id, from, to: input.to });
@@ -498,7 +663,7 @@ export async function transitionOrder(input: TransitionInput, db?: pg.PoolClient
 
 export async function expireReservations(batchSize = 50): Promise<number> {
   return withTransaction(async (c) => {
-    const { rows } = await c.query<{ id: string }>(
+    const due = await c.query<{ id: string }>(
       `select id from orders
         where status = 'pending_payment' and reserved_until < now()
         order by reserved_until
@@ -506,6 +671,17 @@ export async function expireReservations(batchSize = 50): Promise<number> {
         for update skip locked`,
       [batchSize],
     );
+    const mates = due.rows.length
+      ? await c.query<{ id: string }>(
+          `select id from orders
+            where status = 'pending_payment'
+              and checkout_id in (select checkout_id from orders where id = any($1::uuid[]) and checkout_id is not null)
+              and not (id = any($1::uuid[]))
+            for update`,
+          [due.rows.map((row) => row.id)],
+        )
+      : { rows: [] as { id: string }[] };
+    const rows = [...due.rows, ...mates.rows];
     for (const { id } of rows) {
       await releaseStock(c, id);
       await c.query(`update orders set status = 'expired', reserved_until = null where id = $1`, [id]);

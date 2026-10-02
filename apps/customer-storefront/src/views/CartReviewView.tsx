@@ -1,6 +1,7 @@
 'use client';
 import React, { useState } from 'react';
 import { CartItem, GstDetails } from '../types';
+import { estimateTotals, FREE_DELIVERY_THRESHOLD } from '../lib/pricing';
 import { 
   Trash2, 
   ArrowRight, 
@@ -52,8 +53,8 @@ export const CartReviewView: React.FC<CartReviewViewProps> = ({
   const taxableBase = netAmount / 1.18;
   const gstAmount = netAmount - taxableBase;
 
-  const shippingCost = totalGrossAmount >= 999 ? 0 : 90;
-  const grandTotal = netAmount + shippingCost;
+  const totals = estimateTotals(netAmount);
+  const grandTotal = totals.estimatedTotal;
 
   const handleApplyCoupon = (e: React.FormEvent) => {
     e.preventDefault();
@@ -374,19 +375,26 @@ export const CartReviewView: React.FC<CartReviewViewProps> = ({
                 </div>
 
                 <div className="flex justify-between items-center">
-                  <span>Air Express Shipping:</span>
-                  <span className={`font-mono font-bold ${shippingCost === 0 ? 'text-emerald-600' : 'text-slate-900'}`}>
-                    {shippingCost === 0 ? 'FREE (Orders > ₹999)' : `₹${shippingCost}.00`}
+                  <span>Delivery:</span>
+                  <span className={`font-mono font-bold ${totals.freeDelivery ? 'text-emerald-600' : 'text-slate-900'}`}>
+                    {totals.freeDelivery ? `FREE (Orders ≥ ₹${FREE_DELIVERY_THRESHOLD})` : `from ₹${totals.deliveryFrom}`}
                   </span>
                 </div>
 
+                <div className="flex justify-between items-center">
+                  <span>Platform fee:</span>
+                  <span className="font-mono font-semibold text-slate-900">₹{totals.platformFee}</span>
+                </div>
+
                 <div className="pt-3 border-t border-slate-200 flex justify-between items-baseline">
-                  <span className="text-sm font-bold text-slate-900">Total Payable:</span>
+                  <span className="text-sm font-bold text-slate-900">Estimated total:</span>
                   <div className="text-right">
                     <span className="text-xl font-black text-[#192737] font-mono">
                       ₹{grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </span>
-                    <span className="text-[10px] text-slate-400 block">Inclusive of all taxes</span>
+                    <span className="text-[10px] text-slate-400 block">
+                      {totals.freeDelivery ? 'Inclusive of all taxes' : 'Exact delivery fee shown at checkout'}
+                    </span>
                   </div>
                 </div>
               </div>

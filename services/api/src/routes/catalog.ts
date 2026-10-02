@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import { cacheGet, cacheSet, catalogGeneration } from '../cache.js';
 import { pool } from '../db/pool.js';
 import { notFound, parse } from '../errors.js';
 import { toPgVector } from '../catalog/embeddings.js';
@@ -17,13 +18,21 @@ const PRODUCT_COLUMNS = `
   p.id, p.sku, p.name, p.brand, p.category_id as "categoryId", c.name as "categoryName",
   p.description,
   case when p.image_key is not null then '/v1/catalog/products/' || p.id::text || '/image' else p.image_url end as "imageUrl",
-  p.mrp, p.gst_rate as "gstRate", p.specs,
-  (p.specs->>'isChoice' = 'true') as "isChoice",
+  p.mrp, p.gst_rate as "gstRate", p.specs, p.badges,
+  ('our_pick' = any(p.badges)) as "isChoice",
   i.price, i.stock`;
 
 catalogRouter.get('/categories', async (_req, res) => {
+  const key = `categories:${await catalogGeneration()}`;
+  const hit = await cacheGet<{ categories: unknown[] }>(key);
+  if (hit) {
+    res.json(hit);
+    return;
+  }
   const { rows } = await pool.query('select id, name from categories order by sort_order, name');
-  res.json({ categories: rows });
+  const body = { categories: rows };
+  await cacheSet(key, body, 600);
+  res.json(body);
 });
 
 // Every approved, online store whose delivery radius covers the customer.
@@ -43,6 +52,10 @@ const bestOfferSelect = (extra: { columns?: string; joins?: string } = {}) => `
          ${PRODUCT_COLUMNS},${extra.columns ? `\n         ${extra.columns},` : ''}
          n.id as "storeId", n.name as "storeName", n.city as "storeCity",
          round(n.km::numeric, 1)::float as "distanceKm", n.avg_prep_minutes as "prepMinutes",
+         (select coalesce(sum(i2.stock), 0)::int from inventory i2 join nearby n2 on n2.id = i2.store_id
+           where i2.product_id = p.id and i2.is_listed and i2.stock > 0) as "nearbyStock",
+         (select count(*) from inventory i2 join nearby n2 on n2.id = i2.store_id
+           where i2.product_id = p.id and i2.is_listed and i2.stock > 0)::int as "storeCount",
          (select count(*) from inventory i2 join nearby n2 on n2.id = i2.store_id
            where i2.product_id = p.id and i2.is_listed and i2.stock > 0)::int as "offerCount",
          (select min(i3.price) from inventory i3 join nearby n3 on n3.id = i3.store_id
@@ -88,6 +101,18 @@ catalogRouter.get('/catalog/products', async (req, res) => {
     req.query,
   );
   const rawQuery = q.q?.trim() || null;
+  // Search embeddings change per query, so only the plain browse is cached. Stock edits bump the
+  // generation, and the TTL covers stock that moved because an order was placed.
+  const cacheKey = rawQuery
+    ? null
+    : `products:${await catalogGeneration()}:${q.lat.toFixed(2)}:${q.lng.toFixed(2)}:${q.category ?? ''}:${q.limit}:${q.offset}`;
+  if (cacheKey) {
+    const hit = await cacheGet<Record<string, unknown>>(cacheKey);
+    if (hit) {
+      res.json(hit);
+      return;
+    }
+  }
   const searchLike = rawQuery ? `%${escapeLike(rawQuery)}%` : null;
   const queryVector = rawQuery ? await embedQuery(rawQuery) : null;
   const { rows } = await pool.query(
@@ -114,12 +139,14 @@ catalogRouter.get('/catalog/products', async (req, res) => {
     delete row.sem_rank;
     return withEta(row);
   });
-  res.json({
+  const body = {
     products,
     nearbyStores: stores.rows[0]?.n ?? 0,
     serviceable: (stores.rows[0]?.n ?? 0) > 0,
     searchMode: rawQuery ? (queryVector ? 'hybrid' : 'keyword') : null,
-  });
+  };
+  if (cacheKey) await cacheSet(cacheKey, body, 45);
+  res.json(body);
 });
 
 catalogRouter.get('/catalog/products/:productId/image', async (req, res) => {
@@ -168,6 +195,12 @@ catalogRouter.post('/catalog/resolve', async (req, res) => {
 
 catalogRouter.get('/stores/nearby', async (req, res) => {
   const q = parse(z.object({ lat: latitude, lng: longitude }), req.query);
+  const cacheKey = `nearby:${await catalogGeneration()}:${q.lat.toFixed(2)}:${q.lng.toFixed(2)}`;
+  const hit = await cacheGet<Record<string, unknown>>(cacheKey);
+  if (hit) {
+    res.json(hit);
+    return;
+  }
   const { rows } = await pool.query(
     `select s.id, s.name, s.city, s.address_line as "addressLine", s.avg_prep_minutes as "prepMinutes",
             s.delivery_radius_km as "deliveryRadiusKm", d.km as "distanceKm"
@@ -185,7 +218,9 @@ catalogRouter.get('/stores/nearby', async (req, res) => {
     distanceKm: Math.round(s.distanceKm * 10) / 10,
     etaMinutes: etaMinutes(s.prepMinutes, s.distanceKm),
   }));
-  res.json({ stores, serviceable: stores.length > 0 });
+  const body = { stores, serviceable: stores.length > 0 };
+  await cacheSet(cacheKey, body, 45);
+  res.json(body);
 });
 
 async function loadStore(storeId: string) {

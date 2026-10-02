@@ -27,6 +27,18 @@ export interface NearbyStore {
   etaMinutes: number;
 }
 
+/** Trust badges an admin can pin on a product. Customers see the label; the id is stored. */
+export type ProductBadge = 'our_pick' | 'most_sold' | 'verified' | 'new_arrival';
+
+export const PRODUCT_BADGES: Record<ProductBadge, { label: string; hint: string }> = {
+  our_pick: { label: 'Our pick', hint: 'Spaceborn recommends this over similar parts.' },
+  most_sold: { label: 'Most sold', hint: 'Among the top sellers in its category.' },
+  verified: { label: 'Spaceborn verified', hint: 'Sample tested by Spaceborn before listing.' },
+  new_arrival: { label: 'New arrival', hint: 'Recently added to the catalog.' },
+};
+
+export const PRODUCT_BADGE_IDS = Object.keys(PRODUCT_BADGES) as ProductBadge[];
+
 export interface CatalogProduct {
   id: string;
   sku: string;
@@ -41,6 +53,11 @@ export interface CatalogProduct {
   specs: Record<string, string>;
   price: number;
   stock: number;
+  /** Sum of listed stock at every nearby store. `stock` stays the nearest store's own count. */
+  nearbyStock?: number;
+  storeCount?: number;
+  badges: ProductBadge[];
+  /** True when `badges` contains `our_pick`; kept for older callers. */
   isChoice?: boolean;
   vendorId?: string;
   vendorName?: string;
@@ -68,6 +85,7 @@ export interface CartResolution {
   elsewhere: string[];
   pricing: { itemsTotal: number; deliveryFee: number; platformFee: number; grandTotal: number } | null;
   nearbyStores: number;
+  deliveries?: number;
 }
 
 export interface GeoPoint {
@@ -252,6 +270,7 @@ export interface SimilarMatch {
   score: number;
   textScore: number;
   imageScore: number | null;
+  nameScore: number;
   likelyDuplicate: boolean;
 }
 

@@ -54,6 +54,8 @@ const schema = z.object({
   PUBLIC_ORIGIN: z.string().url().default('http://localhost:3000'),
   VENDOR_ORIGIN: z.string().url().default('http://localhost:3001'),
   CORS_ORIGIN: z.string().optional().transform(unset),
+  // Empty locally and on the Render demo: the API serves the catalog straight from Postgres.
+  REDIS_URL: z.string().optional().transform(unset),
 });
 
 function load() {

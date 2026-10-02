@@ -5,8 +5,6 @@ import { api } from '@spaceborn/web-core/api';
 import { useAuth } from '@spaceborn/web-core/auth';
 import type { CatalogOffer, GeoPoint, NearbyStore } from '@spaceborn/web-core/types';
 import type { CartItem, GstDetails, Product, UserProfile } from '../types';
-import { INITIAL_PRODUCTS } from '../data/products';
-
 export interface DeliveryLocation {
   label: string;
   area: string;
@@ -106,7 +104,7 @@ function readJson<T>(key: string): T | null {
   }
 }
 
-function toProduct(p: CatalogOffer): Product {
+export function toProduct(p: CatalogOffer): Product {
   return {
     id: p.id,
     vendorId: p.storeId,
@@ -120,7 +118,7 @@ function toProduct(p: CatalogOffer): Product {
     originalPrice: p.mrp > p.price ? p.mrp : undefined,
     hsn: '',
     gstRate: p.gstRate,
-    stock: p.stock,
+    stock: p.nearbyStock ?? p.stock,
     rating: 0,
     reviewsCount: 0,
     image: p.imageUrl ?? PLACEHOLDER_IMAGE,
@@ -130,8 +128,11 @@ function toProduct(p: CatalogOffer): Product {
     packageIncludes: [],
     specifications: p.specs ?? {},
     deliveryMins: p.etaMinutes,
-    badge: p.isChoice ? 'Spaceborn Choice' : p.offerCount > 1 ? `${p.offerCount} stores nearby` : undefined,
+    badge: p.offerCount > 1 ? `${p.offerCount} stores nearby` : undefined,
     isChoice: p.isChoice,
+    badges: p.badges ?? [],
+    storeDistanceKm: p.distanceKm,
+    storeCount: p.storeCount,
   };
 }
 
@@ -147,7 +148,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const [location, setLocationState] = useState<DeliveryLocation>(LOCATION_PRESETS[0]);
   const [serviceArea, setServiceArea] = useState<ServiceArea>(EMPTY_AREA);
-  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
+  const [products, setProducts] = useState<Product[]>([]);
   const [catalogStatus, setCatalogStatus] = useState<CatalogStatus>('loading');
   const [catalogError, setCatalogError] = useState<string | null>(null);
 
@@ -222,7 +223,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     } catch (err) {
       setCatalogError((err as Error).message);
       setCatalogStatus('error');
-      setProducts((curr) => (curr.length === 0 ? INITIAL_PRODUCTS : curr));
+      setProducts([]);
     }
   }, []);
 
