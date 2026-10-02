@@ -10,8 +10,9 @@ environment    = "prod"
 
 firebase_project_id = "REPLACE_WITH_FIREBASE_PROJECT_ID"
 
-domain_name         = "spaceborn.in"
-acm_certificate_arn = "" # REPLACE: arn:aws:acm:ap-south-1:<account>:certificate/<id> covering spaceborn.in and *.spaceborn.in
+domain_name                = "spaceborn.in"
+acm_certificate_arn        = "" # REPLACE: arn:aws:acm:ap-south-1:<account>:certificate/<id> covering spaceborn.in and *.spaceborn.in (load balancer)
+cloudfront_certificate_arn = "" # REPLACE: same domains, but issued in us-east-1 (CloudFront only accepts that region)
 
 admin_allowed_cidrs = [] # e.g. ["10.8.0.0/16"] if you add a VPN
 

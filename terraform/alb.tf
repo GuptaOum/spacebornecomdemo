@@ -199,7 +199,9 @@ resource "aws_lb_listener_rule" "vendor_hub" {
 
   condition {
     host_header {
-      values = ["vendor.${var.domain_name}"]
+      # vendor.<domain> for direct hits; vendor-origin.<domain> is what CloudFront's vendor distribution
+      # presents, because CloudFront replaces the Host header with its origin's name.
+      values = ["vendor.${var.domain_name}", "vendor-origin.${var.domain_name}"]
     }
   }
 }

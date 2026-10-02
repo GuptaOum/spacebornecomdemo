@@ -16,6 +16,24 @@ output "vendor_url" {
   value = local.vendor_origin
 }
 
+output "cloudfront_urls" {
+  description = "The *.cloudfront.net names. They keep working next to the custom domain."
+  value = local.cloudfront_enabled ? {
+    storefront = "https://${aws_cloudfront_distribution.main[0].domain_name}"
+    vendor     = "https://${aws_cloudfront_distribution.vendor[0].domain_name}"
+  } : {}
+}
+
+output "dns_records" {
+  description = "Records to create at the domain registrar once a certificate is attached."
+  value = local.https_enabled ? {
+    "${var.domain_name} (ALIAS/ANAME, or CNAME on www)" = local.cloudfront_enabled ? aws_cloudfront_distribution.main[0].domain_name : aws_lb.public.dns_name
+    "vendor.${var.domain_name} (CNAME)"                 = local.cloudfront_enabled ? aws_cloudfront_distribution.vendor[0].domain_name : aws_lb.public.dns_name
+    "origin.${var.domain_name} (CNAME)"                 = aws_lb.public.dns_name
+    "vendor-origin.${var.domain_name} (CNAME)"          = aws_lb.public.dns_name
+  } : {}
+}
+
 output "admin_internal_url" {
   value = aws_lb.admin.dns_name
 }

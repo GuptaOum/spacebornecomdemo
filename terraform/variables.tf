@@ -52,6 +52,12 @@ variable "acm_certificate_arn" {
   default     = ""
 }
 
+variable "cloudfront_certificate_arn" {
+  type        = string
+  description = "ACM certificate in us-east-1 covering domain_name and *.domain_name (CloudFront only accepts certificates from that region). Leave empty to serve the distributions on their *.cloudfront.net names only."
+  default     = ""
+}
+
 variable "admin_allowed_cidrs" {
   type        = list(string)
   description = "CIDRs allowed to reach the internal admin load balancer (VPN ranges). The VPC itself is always allowed."
