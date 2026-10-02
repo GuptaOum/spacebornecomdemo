@@ -46,6 +46,16 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
   const [copied, setCopied] = useState(false);
   const [pincode, setPincode] = useState('');
   const [pinStatus, setPinStatus] = useState<{ tone: 'ok' | 'warn' | 'muted'; text: string } | null>(null);
+  // Hover zoom: where the cursor is over the image, as percentages, so the magnified area follows it.
+  const [zoomAt, setZoomAt] = useState<{ x: number; y: number } | null>(null);
+  const ZOOM = 2.2;
+
+  const trackZoom = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    setZoomAt({ x: Math.min(100, Math.max(0, x)), y: Math.min(100, Math.max(0, y)) });
+  };
 
   useEffect(() => {
     setSelectedImage(images[0]);
@@ -144,8 +154,26 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
           <div className="grid gap-6 lg:grid-cols-12 lg:gap-10">
             {/* Gallery */}
             <div className="lg:col-span-5 space-y-3 lg:sticky lg:top-24 self-start">
-              <div className="relative flex h-72 items-center justify-center rounded-xl border border-[#f9bf8f]/50 bg-white p-6 sm:h-96">
-                <img src={selectedImage} alt={product.name} className="max-h-full max-w-full object-contain" />
+              <div
+                className="relative flex h-72 items-center justify-center overflow-hidden rounded-xl border border-[#f9bf8f]/50 bg-white p-6 sm:h-96 lg:cursor-zoom-in"
+                onMouseMove={trackZoom}
+                onMouseLeave={() => setZoomAt(null)}
+              >
+                <img
+                  src={selectedImage}
+                  alt={product.name}
+                  draggable={false}
+                  className={`max-h-full max-w-full select-none object-contain ${zoomAt ? '' : 'transition-transform duration-200 ease-out'}`}
+                  style={{
+                    transform: zoomAt ? `scale(${ZOOM})` : 'scale(1)',
+                    transformOrigin: zoomAt ? `${zoomAt.x}% ${zoomAt.y}%` : 'center',
+                  }}
+                />
+                {!zoomAt && (
+                  <span className="pointer-events-none absolute bottom-3 right-3 hidden rounded-md bg-white/90 px-2 py-1 text-[11px] font-medium text-[#7a6274] shadow-sm lg:block">
+                    Hover to zoom
+                  </span>
+                )}
                 {!inStock && (
                   <span className="absolute left-3 top-3 rounded-md bg-[#34222e] px-2 py-1 text-xs font-semibold text-white">Out of stock</span>
                 )}
