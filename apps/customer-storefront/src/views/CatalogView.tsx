@@ -257,7 +257,7 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
 
   const isSearching = initialSearchQuery.trim().length > 0;
   const resultCountLabel =
-    searchStatus === 'loading'
+    searchStatus === 'loading' || catalogStatus === 'loading'
       ? 'Searching…'
       : `${filteredProducts.length} item${filteredProducts.length === 1 ? '' : 's'}`;
 
@@ -694,7 +694,9 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
                         : 'No products found'}
                 </h3>
                 <p className="text-xs text-[#7a6274] max-w-sm mx-auto">
-                  {catalogStatus === 'error'
+                  {catalogStatus === 'loading'
+                    ? 'Checking stock at stores around your location…'
+                    : catalogStatus === 'error'
                     ? 'Check your connection and try again in a moment.'
                     : catalogStatus === 'unserviceable'
                       ? 'Try a different delivery location from the header.'
@@ -703,7 +705,7 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
                     : 'Try adjusting your filters or price range to find matching components.'}
                 </p>
                 <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
-                  {initialSearchQuery.trim() && (
+                  {initialSearchQuery.trim() && catalogStatus !== 'loading' && (
                     <button
                       type="button"
                       onClick={handleClearSearch}
