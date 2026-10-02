@@ -76,7 +76,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             </button>
           </div>
 
-          <div className="grid grid-cols-4 sm:grid-cols-8 gap-3">
+          <div className="grid grid-cols-4 md:grid-cols-8 gap-2 sm:gap-3">
             {QUICK_CATEGORIES.map((cat, index) => {
               const Icon = cat.icon;
               return (
@@ -94,7 +94,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                   >
                     <Icon className="w-6 h-6" style={{ color: cat.color }} />
                   </div>
-                  <span className="text-xs font-medium text-[#34222e] leading-tight group-hover:text-[#e2434b] transition-colors line-clamp-1">
+                  <span className="text-[11px] sm:text-xs font-medium text-[#34222e] leading-tight group-hover:text-[#e2434b] transition-colors line-clamp-2 break-words">
                     {cat.name}
                   </span>
                 </div>

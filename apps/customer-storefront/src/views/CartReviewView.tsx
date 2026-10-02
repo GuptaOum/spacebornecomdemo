@@ -290,7 +290,7 @@ export const CartReviewView: React.FC<CartReviewViewProps> = ({
           </div>
 
           {/* Right: Sticky Order Summary (4 cols) */}
-          <div className="lg:col-span-4 sticky top-24 space-y-4">
+          <div className="lg:col-span-4 lg:sticky lg:top-24 space-y-4">
             <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
               <h3 className="text-base font-bold text-slate-900 pb-3 border-b border-slate-100">
                 Order Taxable Summary

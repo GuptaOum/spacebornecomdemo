@@ -33,8 +33,9 @@ export const CategoryNav: React.FC<CategoryNavProps> = ({
   selectedCategory,
   onSelectCategory,
 }) => {
+  // Only sticky from md up: on phones the header already has two rows and takes enough of the screen.
   return (
-    <nav className="bg-[#fffbf7] border-b border-[#f9bf8f]/60 sticky top-[60px] z-30 select-none overflow-hidden shadow-xs">
+    <nav className="bg-[#fffbf7] border-b border-[#f9bf8f]/60 md:sticky md:top-[60px] z-30 select-none overflow-hidden shadow-xs">
       <div className="max-w-7xl mx-auto px-4 flex items-center justify-between py-2 text-xs">
         
         {/* Horizontal Category Rail */}
