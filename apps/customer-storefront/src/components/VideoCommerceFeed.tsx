@@ -39,6 +39,8 @@ export const VideoCommerceFeed: React.FC<VideoCommerceFeedProps> = ({
   const [likedReels, setLikedReels] = useState<Record<string, boolean>>({});
   const [showUploadModal, setShowUploadModal] = useState<boolean>(false);
   const [addedReelId, setAddedReelId] = useState<string | null>(null);
+  const [shareNote, setShareNote] = useState<string | null>(null);
+  const [uploadNote, setUploadNote] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   const handleToggleLike = (reelId: string, e: React.MouseEvent) => {
@@ -324,15 +326,18 @@ export const VideoCommerceFeed: React.FC<VideoCommerceFeedProps> = ({
 
                 <button
                   onClick={() => {
-                    navigator.clipboard?.writeText?.(window.location.href);
-                    alert('Reel link copied to clipboard!');
+                    void navigator.clipboard?.writeText?.(window.location.href).then(
+                      () => setShareNote('Link copied'),
+                      () => setShareNote('Could not copy the link'),
+                    );
+                    setTimeout(() => setShareNote(null), 1800);
                   }}
                   className="flex flex-col items-center text-white"
                 >
                   <div className="w-10 h-10 rounded-full bg-black/50 backdrop-blur-md flex items-center justify-center hover:scale-110 transition-transform">
                     <Share2 className="w-5 h-5" />
                   </div>
-                  <span className="text-[10px] font-bold mt-1">Share</span>
+                  <span className="text-[10px] font-bold mt-1">{shareNote ?? 'Share'}</span>
                 </button>
               </div>
 
@@ -462,14 +467,16 @@ export const VideoCommerceFeed: React.FC<VideoCommerceFeedProps> = ({
               Submit Your Hardware Test Video
             </h3>
             <p className="text-xs text-slate-500 mb-4 leading-relaxed">
-              Show us your motor dynamometer test, oscilloscope trace, drone flight, or custom PCB soldering. Verified submissions receive <strong>₹500 store credits</strong> instantly!
+              Show us your motor dynamometer test, oscilloscope trace, drone flight, or custom PCB soldering.
             </p>
+            {uploadNote && (
+              <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-800">{uploadNote}</p>
+            )}
 
             <form 
               onSubmit={(e) => {
                 e.preventDefault();
-                alert('Thank you! Your video demo has been submitted for verification. Store credit coupon code will be emailed in 2 hours.');
-                setShowUploadModal(false);
+                setUploadNote('Video submissions are not open yet. Nothing was uploaded.');
               }}
               className="space-y-3.5"
             >

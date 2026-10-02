@@ -125,11 +125,11 @@ export function toProduct(p: CatalogOffer): Product {
     packageIncludes: [],
     specifications: p.specs ?? {},
     deliveryMins: p.etaMinutes,
-    badge: p.offerCount > 1 ? `${p.offerCount} stores nearby` : undefined,
     isChoice: p.isChoice,
     badges: p.badges ?? [],
     storeDistanceKm: p.distanceKm,
     storeCount: p.storeCount,
+    nearestStock: p.stock,
   };
 }
 

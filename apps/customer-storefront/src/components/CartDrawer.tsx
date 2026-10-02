@@ -53,7 +53,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 </h2>
                 <p className="text-[11px] text-[#059669] font-semibold flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#059669] animate-pulse"></span>
-                  Delivery in 10-15 minutes
+                  Delivered from stock near you
                 </p>
               </div>
             </div>
@@ -71,9 +71,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               <span className="text-[#34222e] flex items-center space-x-1.5">
                 <Zap className="w-4 h-4 text-[#059669] fill-[#059669]" />
                 {amountNeededForFreeShipping === 0 ? (
-                  <span className="text-[#059669] font-bold">🎉 You've unlocked FREE 10-Min Delivery!</span>
+                  <span className="text-[#059669] font-bold">Free delivery on this cart</span>
                 ) : (
-                  <span>Add <strong className="text-[#059669] font-bold">₹{amountNeededForFreeShipping.toFixed(0)}</strong> more for FREE Delivery</span>
+                  <span>Add <strong className="text-[#059669] font-bold">₹{amountNeededForFreeShipping.toFixed(0)}</strong> more for free delivery</span>
                 )}
               </span>
               <span className="text-[11px] font-bold text-[#059669]">{progressPercent}%</span>
@@ -194,9 +194,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                     ₹{totals.estimatedTotal.toLocaleString('en-IN')}
                   </span>
                 </div>
-                {!totals.freeDelivery && (
-                  <p className="text-[10px] text-[#7a6274]">Exact delivery fee depends on distance and is shown at checkout.</p>
-                )}
+                <p className="text-[10px] text-[#7a6274]">
+                  Estimate. The exact amount, including delivery for each dispatch, is shown at checkout before you pay.
+                </p>
               </div>
 
               {/* Action Buttons */}

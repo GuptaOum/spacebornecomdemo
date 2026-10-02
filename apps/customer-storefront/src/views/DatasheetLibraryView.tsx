@@ -155,15 +155,18 @@ export const DatasheetLibraryView: React.FC<DatasheetLibraryViewProps> = ({
                     target="_blank"
                     rel="noreferrer"
                     onClick={(e) => {
-                      if (!product.datasheetUrl) {
-                        e.preventDefault();
-                        alert(`Opening official technical datasheet for ${product.sku}`);
-                      }
+                      if (!product.datasheetUrl) e.preventDefault();
                     }}
-                    className="w-full bg-orange-50 hover:bg-orange-100 text-[#6366f1] border border-orange-200 py-1.5 px-2 rounded-lg text-xs font-semibold flex items-center justify-center space-x-1 transition cursor-pointer"
+                    aria-disabled={!product.datasheetUrl}
+                    title={product.datasheetUrl ? 'Open datasheet' : 'No datasheet uploaded for this part yet'}
+                    className={`w-full border py-1.5 px-2 rounded-lg text-xs font-semibold flex items-center justify-center space-x-1 transition ${
+                      product.datasheetUrl
+                        ? 'bg-orange-50 hover:bg-orange-100 text-[#6366f1] border-orange-200 cursor-pointer'
+                        : 'bg-slate-50 text-slate-400 border-slate-200 cursor-not-allowed'
+                    }`}
                   >
                     <Download className="w-3.5 h-3.5" />
-                    <span>PDF Sheet</span>
+                    <span>{product.datasheetUrl ? 'PDF Sheet' : 'No datasheet yet'}</span>
                   </a>
                 </div>
 
@@ -279,15 +282,22 @@ void loop() {
               )}
 
               <div className="flex items-center justify-between pt-2">
-                <button 
-                  onClick={() => {
-                    alert(`Downloading CAD STEP Model for ${activeModalProduct.sku}`);
-                  }}
-                  className="bg-slate-100 hover:bg-slate-200 text-slate-800 px-4 py-2 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition cursor-pointer"
-                >
-                  <Box className="w-4 h-4" />
-                  <span>Download 3D CAD STEP</span>
-                </button>
+                {activeModalProduct.cadModelUrl ? (
+                  <a
+                    href={activeModalProduct.cadModelUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="bg-slate-100 hover:bg-slate-200 text-slate-800 px-4 py-2 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition cursor-pointer"
+                  >
+                    <Box className="w-4 h-4" />
+                    <span>Download 3D CAD STEP</span>
+                  </a>
+                ) : (
+                  <span className="text-xs text-slate-400 flex items-center space-x-1.5">
+                    <Box className="w-4 h-4" />
+                    <span>No CAD model for this part yet</span>
+                  </span>
+                )}
 
                 <button 
                   onClick={() => {

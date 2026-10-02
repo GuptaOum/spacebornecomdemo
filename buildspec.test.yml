@@ -17,9 +17,10 @@ phases:
       nodejs: 20
     commands:
       - set -e
+      # pgvector is required: migrations run `create extension vector`, which plain postgres:16 lacks.
       - docker run -d --name testpg -p 5432:5432
         -e POSTGRES_USER=$TEST_DB_USER -e POSTGRES_PASSWORD=$TEST_DB_PASSWORD -e POSTGRES_DB=postgres
-        postgres:16-alpine
+        pgvector/pgvector:pg16
       - for i in $(seq 1 40); do docker exec testpg pg_isready -U $TEST_DB_USER -q && break; sleep 2; done
       - docker exec testpg pg_isready -U $TEST_DB_USER
 

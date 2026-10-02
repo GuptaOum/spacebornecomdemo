@@ -78,15 +78,18 @@ describe('location-first catalog', () => {
 
     const a = res.body.products.find((p: { id: string }) => p.id === productA);
     expect(a).toBeTruthy();
-    // Nearest in-stock store wins: the second store is closer and sells A for ₹1.
-    expect(a.storeId).toBe(secondKanpurStore);
+    // Nearest in-stock store sets the price: the second store is closer and sells A for ₹1.
     expect(a.price).toBe(1);
     expect(a.offerCount).toBe(2);
+    expect(a.nearbyStock).toBeGreaterThan(100); // pooled: the closer store's 100 plus the seeded store's
     expect(typeof a.etaMinutes).toBe('number');
+    // Customers never learn which shop is behind an offer.
+    expect(a.storeId).toBeUndefined();
+    expect(a.storeName).toBeUndefined();
 
     const b = res.body.products.find((p: { id: string }) => p.id === productB);
-    expect(b.storeId).toBe(kanpurStore);
     expect(b.offerCount).toBe(1);
+    expect(b.storeId).toBeUndefined();
 
     const ids = res.body.products.map((p: { id: string }) => p.id);
     expect(new Set(ids).size).toBe(ids.length);
@@ -107,41 +110,66 @@ describe('location-first catalog', () => {
     expect((await call(null, 'GET', `/v1/catalog/products/${productA}?lat=${NOWHERE.latitude}&lng=${NOWHERE.longitude}`)).status).toBe(404);
   });
 
-  it('resolve previews the store that can fulfil the whole cart', async () => {
+  it('resolve previews a nearest-first split without naming the shops', async () => {
     const both = await call(null, 'POST', '/v1/catalog/resolve', {
       ...{ lat: KANPUR.latitude, lng: KANPUR.longitude },
       items: [{ productId: productA, quantity: 1 }, { productId: productB, quantity: 1 }],
     });
     expect(both.status).toBe(200);
-    // Only the seeded store has both items, so it beats the closer store.
-    expect(both.body.store.id).toBe(kanpurStore);
+    // A comes from the closer store, B only exists at the seeded one: two deliveries, one payment.
+    expect(both.body.deliveries).toBe(2);
+    expect(both.body.store).toEqual({ distanceKm: expect.any(Number), etaMinutes: expect.any(Number) });
     expect(both.body.unavailable).toHaveLength(0);
     expect(both.body.pricing.grandTotal).toBeGreaterThan(0);
 
     const onlyA = await call(null, 'POST', '/v1/catalog/resolve', {
       lat: KANPUR.latitude, lng: KANPUR.longitude, items: [{ productId: productA, quantity: 2 }],
     });
-    expect(onlyA.body.store.id).toBe(secondKanpurStore);
-    expect(onlyA.body.pricing.itemsTotal).toBe(2);
+    expect(onlyA.body.deliveries).toBe(1);
+    expect(onlyA.body.pricing.itemsTotal).toBe(2); // the closer store's ₹1 price
   });
 });
 
+// Which shop each order of a checkout went to, keyed by product. The customer API hides this, so read the DB.
+async function shopsByProduct(orderId: string) {
+  const { rows } = await db.pool.query<{ store_id: string; product_id: string }>(
+    `select o.store_id, oi.product_id
+       from orders o join order_items oi on oi.order_id = o.id
+      where o.checkout_id = (select checkout_id from orders where id = $1)`,
+    [orderId],
+  );
+  return new Map(rows.map((r) => [r.product_id, r.store_id]));
+}
+
 describe('checkout without choosing a vendor', () => {
-  it('assigns the order to the nearest store that has everything', async () => {
+  it('fills each item from the nearest shop that has it, as one checkout with one payment', async () => {
     const placed = await call('kp-cust:customer', 'POST', '/v1/orders', {
       items: [{ productId: productA, quantity: 1 }, { productId: productB, quantity: 1 }],
       address,
     }, idem());
     expect(placed.status).toBe(201);
-    expect(placed.body.order.storeId).toBe(kanpurStore);
     expect(placed.body.order.status).toBe('pending_payment');
+    expect(placed.body.order.storeId).toBeUndefined();
+    expect(placed.body.order.storeName).toBeUndefined();
+    expect(placed.body.payment).toBeTruthy();
+
+    const shops = await shopsByProduct(placed.body.order.id);
+    expect(shops.get(productA)).toBe(secondKanpurStore);
+    expect(shops.get(productB)).toBe(kanpurStore);
+
+    const payments = await db.pool.query(
+      `select count(*)::int as n from payments where checkout_id = (select checkout_id from orders where id = $1)`,
+      [placed.body.order.id],
+    );
+    expect(payments.rows[0].n).toBe(1);
   });
 
-  it('prefers the closer store when it can supply the cart', async () => {
+  it('uses the closer store alone when it can supply the cart', async () => {
     const placed = await call('kp-cust:customer', 'POST', '/v1/orders', { items: [{ productId: productA, quantity: 1 }], address }, idem());
     expect(placed.status).toBe(201);
-    expect(placed.body.order.storeId).toBe(secondKanpurStore);
     expect(placed.body.order.itemsTotal).toBe(1);
+    const shops = await shopsByProduct(placed.body.order.id);
+    expect([...shops.values()]).toEqual([secondKanpurStore]);
   });
 
   it('refuses when no store nearby has the items, and says which ones', async () => {
@@ -152,6 +180,7 @@ describe('checkout without choosing a vendor', () => {
     }, idem());
     expect(placed.status).toBe(409);
     expect(placed.body.error.details.code).toBe('partial_availability');
+    expect(placed.body.error.details.storeId).toBeUndefined();
     expect(placed.body.error.details.items.map((i: { productId: string }) => i.productId)).toEqual([productB]);
     await db.pool.query('update inventory set stock = 10 where product_id = $1', [productB]);
   });
@@ -186,7 +215,10 @@ describe('checkout without choosing a vendor', () => {
 
     // One takes the closer store's last unit; the other must not 409 but roll on to the next store.
     expect([one.status, two.status]).toEqual([201, 201]);
-    expect(new Set([one.body.order.storeId, two.body.order.storeId])).toEqual(new Set([secondKanpurStore, kanpurStore]));
+    const stores = await db.pool.query<{ store_id: string }>('select store_id from orders where id = any($1::uuid[])', [
+      [one.body.order.id, two.body.order.id],
+    ]);
+    expect(new Set(stores.rows.map((r) => r.store_id))).toEqual(new Set([secondKanpurStore, kanpurStore]));
 
     await db.pool.query('update inventory set stock = 100 where store_id = $1 and product_id = $2', [secondKanpurStore, productA]);
   });

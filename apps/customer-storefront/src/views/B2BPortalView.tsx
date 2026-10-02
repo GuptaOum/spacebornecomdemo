@@ -291,16 +291,10 @@ SEN-TF-LUNA-LIDAR, 5`
               </div>
 
               <div className="flex items-center space-x-3 pt-2">
-                <button 
-                  onClick={() => {
-                    alert('Proforma Quotation PDF downloaded to your device.');
-                    setShowRfqModal(false);
-                  }}
-                  className="flex-1 bg-[#6366f1] hover:bg-[#d44000] text-white py-2.5 rounded-lg text-xs font-bold flex items-center justify-center space-x-2 transition cursor-pointer"
-                >
+                <span className="flex-1 bg-slate-100 text-slate-500 py-2.5 rounded-lg text-xs font-bold flex items-center justify-center space-x-2">
                   <Download className="w-4 h-4" />
-                  <span>Download Proforma Quotation PDF</span>
-                </button>
+                  <span>Quotation PDF not available yet</span>
+                </span>
                 <button 
                   onClick={() => setShowRfqModal(false)}
                   className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2.5 rounded-lg text-xs font-semibold cursor-pointer"

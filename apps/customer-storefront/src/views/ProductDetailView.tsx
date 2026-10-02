@@ -58,6 +58,9 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
   const inStock = product.stock > 0;
   const lowStock = inStock && product.stock <= 5;
   const total = product.price * quantity;
+  // The shown price is the nearest shop's. Units beyond its stock ship from a farther shop at
+  // that shop's price, so the exact amount is only known at checkout.
+  const spillsOver = product.nearestStock !== undefined && quantity > product.nearestStock;
   const discount = product.originalPrice && product.originalPrice > product.price
     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
     : 0;
@@ -102,12 +105,12 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
         `/catalog/products/${encodeURIComponent(product.id)}?lat=${point.latitude}&lng=${point.longitude}`,
       );
       setPinStatus(
-        offer.stock > 0
-          ? { tone: 'ok', text: `Delivers to ${pincode} in about ${offer.etaMinutes} min. ${offer.stock} in stock near you.` }
+        (offer.nearbyStock ?? offer.stock) > 0
+          ? { tone: 'ok', text: `Delivers to ${pincode} in about ${offer.etaMinutes} min. ${offer.nearbyStock ?? offer.stock} in stock there.` }
           : { tone: 'warn', text: `This item is listed near ${pincode} but it is out of stock right now.` },
       );
     } catch {
-      setPinStatus({ tone: 'warn', text: `No store near ${pincode} stocks this item yet.` });
+      setPinStatus({ tone: 'warn', text: `This item is not available near ${pincode} yet.` });
     }
   };
 
@@ -258,9 +261,16 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
                     </button>
                   </div>
                   <span className="text-sm text-[#7a6274]">
-                    Total <span className="font-semibold text-[#34222e]">{inr(total)}</span>
+                    {spillsOver ? 'From ' : 'Total '}
+                    <span className="font-semibold text-[#34222e]">{inr(total)}</span>
                   </span>
                 </div>
+                {spillsOver && (
+                  <p className="text-xs text-[#7a6274]">
+                    {product.nearestStock} of these are at the shown price. The rest ship from farther away and may cost a little
+                    more; the exact total is shown at checkout before you pay.
+                  </p>
+                )}
 
                 <div className="grid gap-2 sm:grid-cols-2">
                   <button

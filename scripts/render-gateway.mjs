@@ -48,6 +48,7 @@ function getMemoryLimit(name) {
     case 'storefront': return '96';
     case 'vendor': return '72';
     case 'admin': return '72';
+    case 'worker': return '48';
     default: return '80';
   }
 }
@@ -359,6 +360,7 @@ function startGateway() {
     log('gateway', `-> Vendor Hub on :${VENDOR_PORT} (Cookie/Switch/Subdomain)`);
     log('gateway', `-> Admin Panel on :${ADMIN_PORT} (Cookie/Switch/Subdomain)`);
     log('gateway', `-> API on :${API_PORT} (/v1/*)`);
+    log('gateway', `-> Outbox worker (no port; polls the database)`);
     log('gateway', `-> Hub & Navigation at /__portal`);
   });
 }
@@ -623,6 +625,13 @@ async function main() {
   // Step C: Spawn backend API
   spawnService('api', nodeCmd, ['services/api/dist/server.js'], {
     PORT: String(API_PORT),
+  });
+
+  // Step C2: Spawn the outbox worker (refunds, order emails, stock release for unpaid orders).
+  // Without it the outbox table fills up and nothing downstream of a payment ever happens.
+  // Same database, a tiny pool; it polls, so it needs no port.
+  spawnService('worker', nodeCmd, ['services/api/dist/worker.js'], {
+    DB_POOL_MAX: process.env.WORKER_DB_POOL_MAX || '2',
   });
 
   // Wait 1.5s for API to bind

@@ -1,20 +1,15 @@
 'use client';
-import React, { useState } from 'react';
+import React from 'react';
 import { CartItem, GstDetails } from '../types';
 import { estimateTotals, FREE_DELIVERY_THRESHOLD } from '../lib/pricing';
 import { 
   Trash2, 
   ArrowRight, 
   ShieldCheck, 
-  Truck, 
-  FileCheck, 
   Lock, 
   Tag, 
-  ChevronRight, 
   CheckCircle2, 
-  AlertCircle,
   Building,
-  CreditCard,
   ShoppingBag
 } from 'lucide-react';
 
@@ -39,33 +34,14 @@ export const CartReviewView: React.FC<CartReviewViewProps> = ({
   onRemoveItem,
   onProceedToCheckout,
   onContinueShopping,
-  couponCode,
-  onApplyCoupon,
   discountPercent,
 }) => {
-  const [inputCoupon, setInputCoupon] = useState(couponCode || '');
-  const [couponFeedback, setCouponFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-
   const totalGrossAmount = cart.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
   const discountAmount = (totalGrossAmount * discountPercent) / 100;
   const netAmount = totalGrossAmount - discountAmount;
 
-  const taxableBase = netAmount / 1.18;
-  const gstAmount = netAmount - taxableBase;
-
   const totals = estimateTotals(netAmount);
   const grandTotal = totals.estimatedTotal;
-
-  const handleApplyCoupon = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputCoupon.trim()) return;
-    const res = onApplyCoupon(inputCoupon.trim().toUpperCase());
-    if (res.success) {
-      setCouponFeedback({ type: 'success', text: res.message });
-    } else {
-      setCouponFeedback({ type: 'error', text: res.message });
-    }
-  };
 
   const handleGstinChange = (val: string) => {
     const formatted = val.toUpperCase().slice(0, 15);
@@ -247,10 +223,10 @@ export const CartReviewView: React.FC<CartReviewViewProps> = ({
                   </div>
                   <div>
                     <h3 className="text-xs sm:text-sm font-bold text-slate-900">
-                      B2B Corporate & Institutional GST Tax Credit
+                      Buying for a business? Add your GSTIN
                     </h3>
                     <p className="text-[11px] text-slate-500">
-                      Claim ₹{gstAmount.toFixed(2)} Input Tax Credit directly on your GSTR-2B filing
+                      Your GSTIN and business name are printed on the invoice.
                     </p>
                   </div>
                 </div>
@@ -298,42 +274,17 @@ export const CartReviewView: React.FC<CartReviewViewProps> = ({
                     />
                   </div>
 
-                  <div className="sm:col-span-2 flex items-center justify-between bg-emerald-50 border border-emerald-200 p-2.5 rounded-lg text-emerald-800 text-[11px]">
-                    <span className="flex items-center space-x-1.5 font-medium">
-                      <FileCheck className="w-4 h-4 shrink-0" />
-                      <span>State Code: {gstDetails.stateCode || '29'} (Karnataka) • Compliant with Indian E-Invoicing Portals</span>
-                    </span>
-                    <span className="font-mono font-bold">18% IGST Credit Enabled</span>
-                  </div>
+                  <p className="sm:col-span-2 text-[11px] text-slate-500">
+                    The GSTIN is printed on your invoice. Tax is charged at each product's own GST rate.
+                  </p>
                 </div>
               )}
             </div>
 
-            {/* Coupon Code Card */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs">
-              <form onSubmit={handleApplyCoupon} className="flex items-center gap-3">
-                <Tag className="w-5 h-5 text-slate-400 shrink-0" />
-                <div className="flex-1">
-                  <input
-                    type="text"
-                    value={inputCoupon}
-                    onChange={(e) => setInputCoupon(e.target.value)}
-                    placeholder="Enter Coupon / Promo Code (e.g. SPBN10 or MAKER5)"
-                    className="w-full text-xs font-mono font-bold text-slate-800 uppercase outline-none placeholder:font-sans placeholder:font-normal"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="bg-white hover:bg-slate-800 text-white text-xs font-bold px-4 py-2 rounded-lg transition cursor-pointer"
-                >
-                  Apply
-                </button>
-              </form>
-              {couponFeedback && (
-                <p className={`text-xs mt-2 font-medium ${couponFeedback.type === 'success' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                  {couponFeedback.text}
-                </p>
-              )}
+            {/* Coupons */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs flex items-center gap-3 text-xs text-slate-500">
+              <Tag className="w-5 h-5 text-slate-400 shrink-0" />
+              <span>Coupons are not available yet.</span>
             </div>
 
           </div>
@@ -360,20 +311,6 @@ export const CartReviewView: React.FC<CartReviewViewProps> = ({
                   </div>
                 )}
 
-                <div className="flex justify-between">
-                  <span>Taxable Base Value:</span>
-                  <span className="font-mono font-semibold text-slate-900">
-                    ₹{taxableBase.toFixed(2)}
-                  </span>
-                </div>
-
-                <div className="flex justify-between">
-                  <span>IGST / CGST+SGST (18%):</span>
-                  <span className="font-mono font-semibold text-blue-700">
-                    +₹{gstAmount.toFixed(2)}
-                  </span>
-                </div>
-
                 <div className="flex justify-between items-center">
                   <span>Delivery:</span>
                   <span className={`font-mono font-bold ${totals.freeDelivery ? 'text-emerald-600' : 'text-slate-900'}`}>
@@ -393,7 +330,7 @@ export const CartReviewView: React.FC<CartReviewViewProps> = ({
                       ₹{grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </span>
                     <span className="text-[10px] text-slate-400 block">
-                      {totals.freeDelivery ? 'Inclusive of all taxes' : 'Exact delivery fee shown at checkout'}
+                      Prices include GST. The exact amount, including delivery for each dispatch, is shown at checkout.
                     </span>
                   </div>
                 </div>
@@ -420,7 +357,7 @@ export const CartReviewView: React.FC<CartReviewViewProps> = ({
                   <span>PCI-DSS Level 1</span>
                 </div>
                 <p className="text-[10px] text-slate-400">
-                  Official GST Tax Invoice issued immediately upon payment clearance.
+                  Your order confirmation and payment receipt follow once payment clears.
                 </p>
               </div>
 

@@ -228,7 +228,13 @@ describe('order lifecycle across roles', () => {
 
     const after = await db.pool.query('select stock from inventory where store_id = $1 and product_id = $2', [bengaluruStore, productId]);
     expect(after.rows[0].stock).toBe(before.rows[0].stock);
-    const payment = await db.pool.query('select status from payments where order_id = $1', [orderId]);
+    // One payment per checkout; this order is the only delivery in it.
+    const payment = await db.pool.query(
+      `select status from payments
+        where order_id = $1 or checkout_id = (select checkout_id from orders where id = $1)`,
+      [orderId],
+    );
+    expect(payment.rows).toHaveLength(1);
     expect(payment.rows[0].status).toBe('refund_pending');
     const outbox = await db.pool.query(`select 1 from outbox where topic = 'refund.requested' and payload->>'orderId' = $1`, [orderId]);
     expect(outbox.rowCount).toBe(1);
@@ -270,7 +276,10 @@ describe('order lifecycle across roles', () => {
       storeId: puneStore, items: [{ productId, quantity: 1 }], address,
     }, idem());
     expect(res.status).toBe(201);
-    expect(res.body.order.storeId).toBe(bengaluruStore);
+    // The customer response never names the shop; the DB shows the nearest one took it.
+    expect(res.body.order.storeId).toBeUndefined();
+    const { rows } = await db.pool.query('select store_id from orders where id = $1', [res.body.order.id]);
+    expect(rows[0].store_id).toBe(bengaluruStore);
   });
 });
 
@@ -322,7 +331,10 @@ describe('fabrication services', () => {
     expect((await nearby()).body.services.some((s: { id: string }) => s.id === listingId)).toBe(true);
     const kanpur = await call(null, 'GET', '/v1/services/nearby?lat=26.4499&lng=80.3319&kind=3d_printing');
     expect(kanpur.body.services.some((s: { id: string }) => s.id === listingId)).toBe(false);
-    expect((await call(vendorPune(), 'GET', '/v1/vendor/services')).body.services).toHaveLength(0);
+    // Pune has its own seeded services, but never sees Bengaluru's listing.
+    const pune = await call(vendorPune(), 'GET', '/v1/vendor/services');
+    expect(pune.status).toBe(200);
+    expect(pune.body.services.every((s: { id: string }) => s.id !== listingId)).toBe(true);
   });
 
   it('an approved service stays visible inside the delivery radius when the store is offline for instant orders', async () => {
@@ -533,7 +545,7 @@ describe('vendor product submissions', () => {
 
   it('flags a copied title and can attach the vendor stock to the existing product', async () => {
     const product = await call('root-admin:admin', 'POST', '/v1/admin/products', {
-      sku: 'SB-DUP-TEST', name: 'Duplicate Detector Widget 9000', categoryId: 'dev-boards', mrp: 500, description: 'Reference item',
+      sku: 'SB-DUP-TEST', name: 'Duplicate Detector Widget 9000', categoryId: 'dev-boards', mrp: 999, description: 'Reference item',
     });
     expect(product.status).toBe(201);
     const image = await uploadImage(vendorBlr());
@@ -548,6 +560,41 @@ describe('vendor product submissions', () => {
     });
     expect(merged.status).toBe(200);
     expect(merged.body.submission.productId).toBe(product.body.product.id);
+  });
+
+  it('refuses to merge when the vendor price is above the catalog MRP or the category differs', async () => {
+    const cheap = await call('root-admin:admin', 'POST', '/v1/admin/products', {
+      sku: 'SB-DUP-CHEAP', name: 'Budget Merge Target 100', categoryId: 'dev-boards', mrp: 500, description: 'MRP below the vendor price',
+    });
+    expect(cheap.status).toBe(201);
+    const image = await uploadImage(vendorBlr());
+    const created = await call(vendorBlr(), 'POST', '/v1/vendor/product-submissions', submission(image.body.imageKey, 'Budget Merge Target 100'));
+    expect(created.status).toBe(201);
+
+    // Vendor asks ₹800 for an item whose catalog MRP is ₹500: the shared listing would lie to customers.
+    const tooDear = await call('root-admin:admin', 'POST', `/v1/admin/product-submissions/${created.body.submission.id}/approve`, {
+      mergeIntoProductId: cheap.body.product.id,
+    });
+    expect(tooDear.status).toBe(422);
+    expect(tooDear.body.error.code).toBe('price_above_mrp');
+
+    const otherCategory = await db.pool.query<{ id: string }>(`select id from categories where id <> 'dev-boards' limit 1`);
+    const elsewhere = await call('root-admin:admin', 'POST', '/v1/admin/products', {
+      sku: 'SB-DUP-CAT', name: 'Wrong Shelf Merge Target', categoryId: otherCategory.rows[0]!.id, mrp: 999, description: 'Different category',
+    });
+    expect(elsewhere.status).toBe(201);
+    const wrongShelf = await call('root-admin:admin', 'POST', `/v1/admin/product-submissions/${created.body.submission.id}/approve`, {
+      mergeIntoProductId: elsewhere.body.product.id,
+    });
+    expect(wrongShelf.status).toBe(422);
+    expect(wrongShelf.body.error.code).toBe('category_mismatch');
+
+    // The submission is still pending, so the admin can reject it with a reason instead.
+    const { rows } = await db.pool.query('select status from product_submissions where id = $1', [created.body.submission.id]);
+    expect(rows[0].status).toBe('pending');
+
+    // Fixtures only: these never went through review, so the worker has not embedded them yet.
+    await db.pool.query('delete from products where id = any($1::uuid[])', [[cheap.body.product.id, elsewhere.body.product.id]]);
   });
 
   it('refuses a photo uploaded by a different store', async () => {
@@ -568,7 +615,10 @@ describe('customer search', () => {
     expect(hit.status).toBe(200);
     expect(hit.body.searchMode).toBe('hybrid');
     expect(hit.body.products[0].id).toBe(productId);
-    expect(hit.body.products.every((p: { storeCity: string }) => p.storeCity === 'Bengaluru')).toBe(true);
+    // Results are limited to shops that deliver here, and never say which shop; only the pooled stock and ETA.
+    expect(hit.body.serviceable).toBe(true);
+    expect(hit.body.products.every((p: { storeCity?: string; storeId?: string; nearbyStock: number }) =>
+      p.storeCity === undefined && p.storeId === undefined && p.nearbyStock > 0)).toBe(true);
 
     const miss = await call(null, 'GET', `/v1/catalog/products?${near}&q=zzqxvwk`);
     expect(miss.status).toBe(200);

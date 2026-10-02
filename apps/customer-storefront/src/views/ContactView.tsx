@@ -78,12 +78,13 @@ export const ContactView: React.FC<ContactViewProps> = ({ onNavigate }) => {
           <div className="lg:col-span-2 bg-white rounded-2xl p-6 sm:p-8 border border-slate-200 shadow-xs">
             {submitted ? (
               <div className="text-center py-12 space-y-4">
-                <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
+                <div className="w-16 h-16 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto">
                   <CheckCircle2 className="w-10 h-10" />
                 </div>
-                <h3 className="text-2xl font-bold text-slate-900">Inquiry Ticket Dispatched</h3>
+                <h3 className="text-2xl font-bold text-slate-900">Not sent yet</h3>
                 <p className="text-slate-600 text-sm max-w-md mx-auto">
-                  Thank you, <strong className="text-slate-900">{formData.name}</strong>. A Spaceborn hardware application engineer will review your specifications and respond to <strong className="text-slate-900">{formData.email}</strong> within 3 business hours.
+                  This form is not connected yet, so your message was not delivered. For now, please write to us at the email address
+                  shown on this page and include your order number if you have one.
                 </p>
                 <div className="pt-4">
                   <button 
@@ -228,7 +229,7 @@ export const ContactView: React.FC<ContactViewProps> = ({ onNavigate }) => {
               {callbackRequested ? (
                 <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-3 text-xs text-emerald-300 flex items-center space-x-2">
                   <CheckCircle2 className="w-4 h-4 shrink-0" />
-                  <span>Callback queued! Engineer will dial {callbackPhone} shortly.</span>
+                  <span>Callbacks are not available yet. {callbackPhone} was not sent anywhere; please email us instead.</span>
                 </div>
               ) : (
                 <form onSubmit={handleCallbackSubmit} className="space-y-2">

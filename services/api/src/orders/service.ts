@@ -367,7 +367,6 @@ export async function placeOrder(input: PlaceOrderInput) {
         const items = classifyShortfall(quantities, new Map(offered.rows.map((r) => [r.product_id, r.stock])), nearby);
         throw conflict('Some items in your cart are not available near you', {
           code: 'partial_availability',
-          storeId: best.storeId,
           items: items.map((item) => ({
             ...item,
             available: lastShort.find((s) => s.productId === item.productId)?.available ?? item.availableNearby,

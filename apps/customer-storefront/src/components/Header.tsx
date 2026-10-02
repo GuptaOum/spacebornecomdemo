@@ -67,9 +67,9 @@ export const Header: React.FC<HeaderProps> = ({
   const [placeResults, setPlaceResults] = useState<DeliveryLocation[]>([]);
   const deliveryLabel =
     catalogStatus === 'loading'
-      ? 'Finding stores near you…'
+      ? 'Checking delivery here…'
       : serviceArea.etaMinutes
-        ? `Delivery in ${serviceArea.etaMinutes} mins · ${serviceArea.nearbyStores} store${serviceArea.nearbyStores === 1 ? '' : 's'} nearby`
+        ? `Delivery in about ${serviceArea.etaMinutes} mins`
         : 'Not serviceable here yet';
 
   const submitPlace = async () => {

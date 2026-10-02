@@ -104,7 +104,7 @@ export function CheckoutView({ onNavigate }: CheckoutViewProps) {
       return;
     }
     if (!resolution?.store) {
-      setErrorMessage('No store delivers to your selected location yet. Change the location from the header.');
+      setErrorMessage('We do not deliver to your selected location yet. Change the location from the header.');
       return;
     }
     if (unavailable.size || elsewhere.size) {
@@ -256,8 +256,8 @@ export function CheckoutView({ onNavigate }: CheckoutViewProps) {
               <div>
                 <p className="font-semibold text-[#0c831f]">Pay securely via Razorpay</p>
                 <p className="mt-0.5 text-slate-600">
-                  UPI, cards, net banking and wallets. Prices and stock are confirmed by the store when you pay; card details never
-                  touch Spaceborn servers.
+                  UPI, cards, net banking and wallets. Prices and stock are confirmed the moment you pay; card details never touch
+                  Spaceborn servers.
                 </p>
               </div>
             </div>
@@ -305,8 +305,8 @@ export function CheckoutView({ onNavigate }: CheckoutViewProps) {
                         className="mt-0.5 text-xs font-semibold text-[#e2434b] underline cursor-pointer"
                       >
                         {splitOnly
-                          ? 'Sold nearby, but not by the store with the rest of your cart · remove to order separately'
-                          : 'Not available nearby right now · remove'}
+                          ? 'Not enough in stock near you for this quantity · remove or reduce'
+                          : 'Not available near you right now · remove'}
                       </button>
                     )}
                   </div>
@@ -321,7 +321,7 @@ export function CheckoutView({ onNavigate }: CheckoutViewProps) {
                     <span>₹{resolution.pricing.itemsTotal.toLocaleString('en-IN')}</span>
                   </div>
                   <div className="flex justify-between text-[#7a6274]">
-                    <span>Delivery{resolution.store ? ` · ${resolution.store.distanceKm} km` : ''}</span>
+                    <span>Delivery{(resolution.deliveries ?? 1) > 1 ? ` · ${resolution.deliveries} dispatches` : ''}</span>
                     <span>{resolution.pricing.deliveryFee === 0 ? 'Free' : `₹${resolution.pricing.deliveryFee.toLocaleString('en-IN')}`}</span>
                   </div>
                   <div className="flex justify-between text-[#7a6274]">
@@ -340,9 +340,10 @@ export function CheckoutView({ onNavigate }: CheckoutViewProps) {
                 </div>
               )}
               <p className="pt-1 text-xs text-[#7a6274]">
-                Delivery is free above ₹499 on each dispatch. If more than one store is needed, each sends its own part and the fee above is the sum.
+                Delivery is free above ₹499 per dispatch. When your items are stocked at more than one place near you, each part is
+                sent separately and the fee above is the sum. The platform fee is charged once.
                 {resolution && (resolution.deliveries ?? 1) > 1 && (
-                  <span className="mt-1 block font-semibold text-[#34222e]">This order will arrive as {resolution.deliveries} deliveries, from the nearest stores that have stock.</span>
+                  <span className="mt-1 block font-semibold text-[#34222e]">This order will arrive as {resolution.deliveries} deliveries, filled from the stock nearest to you.</span>
                 )}
               </p>
             </div>

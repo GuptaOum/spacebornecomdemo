@@ -47,6 +47,8 @@ export interface Product {
   badges?: ProductBadge[];
   storeDistanceKm?: number;
   storeCount?: number;
+  /** Units at the nearest shop at `price`. Above this, the rest ships from a farther shop at its own price. */
+  nearestStock?: number;
   deliveryMins?: number; // e.g. 10 or 15 mins
   packSize?: string; // e.g. '1 Unit', 'Pack of 2', '100g'
   flashDeal?: boolean;
