@@ -33,6 +33,8 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({ onNavigate, onSelectCate
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [isArrowAnimating, setIsArrowAnimating] = useState<'left' | 'right' | null>(null);
+  // Touch swipe (phones hide the arrow buttons, so swiping is the way to change slides there).
+  const touchStartX = useRef<number | null>(null);
 
   const slides: SlideItem[] = [
     {
@@ -151,6 +153,22 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({ onNavigate, onSelectCate
     return () => clearInterval(timer);
   }, [isPaused, nextSlide]);
 
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0]?.clientX ?? null;
+    setIsPaused(true);
+  };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    const start = touchStartX.current;
+    touchStartX.current = null;
+    setIsPaused(false);
+    const end = e.changedTouches[0]?.clientX;
+    if (start === null || end === undefined) return;
+    const delta = end - start;
+    if (Math.abs(delta) < 40) return; // a tap, not a swipe
+    if (delta < 0) nextSlide();
+    else prevSlide();
+  };
+
   return (
     <div 
       className="relative rounded-3xl overflow-hidden shadow-sm border border-[#f9bf8f]/60 select-none group bg-[#fffbf7]"
@@ -158,7 +176,11 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({ onNavigate, onSelectCate
       onMouseLeave={() => setIsPaused(false)}
     >
       {/* Sliding Track Viewport */}
-      <div className="relative overflow-hidden min-h-[260px] sm:min-h-[290px] md:min-h-[310px]">
+      <div
+        className="relative overflow-hidden min-h-[260px] sm:min-h-[290px] md:min-h-[310px] touch-pan-y"
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+      >
         <div 
           className="flex transition-transform duration-500 ease-out h-full"
           style={{ transform: `translateX(-${currentSlide * 100}%)` }}
@@ -243,7 +265,7 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({ onNavigate, onSelectCate
         </div>
 
         {/* Elongated Pill Indicators (Robu / Blinkit style) */}
-        <div className="absolute bottom-3 left-6 sm:left-8 z-20 flex items-center space-x-1.5 bg-white/80 backdrop-blur-xs px-2.5 py-1.5 rounded-full border border-[#f9bf8f]/60 shadow-2xs">
+        <div className="absolute bottom-2 sm:bottom-3 left-1/2 -translate-x-1/2 sm:left-8 sm:translate-x-0 z-20 flex items-center space-x-1.5 bg-white/80 backdrop-blur-xs px-2.5 py-1.5 rounded-full border border-[#f9bf8f]/60 shadow-2xs">
           {slides.map((s, idx) => (
             <button
               key={s.id}
@@ -262,7 +284,7 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({ onNavigate, onSelectCate
         <button
           type="button"
           onClick={() => handleArrowClick('left')}
-          className={`absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 hover:bg-white text-[#34222e] flex items-center justify-center shadow-md backdrop-blur-xs transition-all duration-200 cursor-pointer border border-[#f9bf8f]/70 z-20 hover:scale-110 active:scale-90 ${
+          className={`absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 hover:bg-white text-[#34222e] hidden sm:flex items-center justify-center shadow-md backdrop-blur-xs transition-all duration-200 cursor-pointer border border-[#f9bf8f]/70 z-20 hover:scale-110 active:scale-90 ${
             isArrowAnimating === 'left' ? 'animate-arrow-bounce ring-2 ring-[#0c831f]' : ''
           }`}
           aria-label="Previous slide"
@@ -272,7 +294,7 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({ onNavigate, onSelectCate
         <button
           type="button"
           onClick={() => handleArrowClick('right')}
-          className={`absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 hover:bg-white text-[#34222e] flex items-center justify-center shadow-md backdrop-blur-xs transition-all duration-200 cursor-pointer border border-[#f9bf8f]/70 z-20 hover:scale-110 active:scale-90 ${
+          className={`absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 hover:bg-white text-[#34222e] hidden sm:flex items-center justify-center shadow-md backdrop-blur-xs transition-all duration-200 cursor-pointer border border-[#f9bf8f]/70 z-20 hover:scale-110 active:scale-90 ${
             isArrowAnimating === 'right' ? 'animate-arrow-bounce ring-2 ring-[#0c831f]' : ''
           }`}
           aria-label="Next slide"

@@ -255,30 +255,75 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
     sortBy
   ]);
 
+  const isSearching = initialSearchQuery.trim().length > 0;
+  const resultCountLabel =
+    searchStatus === 'loading'
+      ? 'Searching…'
+      : `${filteredProducts.length} item${filteredProducts.length === 1 ? '' : 's'}`;
+
   return (
-    <div className="min-h-screen bg-[#fee9d7] text-[#34222e] py-6">
+    <div className="min-h-screen bg-[#fee9d7] text-[#34222e] py-4 sm:py-6">
       <div className="max-w-7xl mx-auto px-4">
         
         {/* Breadcrumb Navigation */}
-        <div className="flex items-center space-x-2 text-xs text-[#7a6274] mb-4">
+        <div className="flex items-center space-x-2 text-xs text-[#7a6274] mb-3 sm:mb-4 min-w-0">
           <span 
             onClick={() => onSelectCategory('All Categories')} 
-            className="hover:text-[#e2434b] cursor-pointer"
+            className="hover:text-[#e2434b] cursor-pointer shrink-0"
           >
             Home
           </span>
-          <ChevronRight className="w-3.5 h-3.5 text-[#7a6274]" />
-          <span className="hover:text-[#e2434b] cursor-pointer">{selectedCategory}</span>
-          {selectedSubCategory !== 'All' && (
+          <ChevronRight className="w-3.5 h-3.5 text-[#7a6274] shrink-0" />
+          {isSearching ? (
+            <span className="truncate">Search</span>
+          ) : (
             <>
-              <ChevronRight className="w-3.5 h-3.5 text-[#7a6274]" />
-              <span className="font-bold text-[#34222e]">{selectedSubCategory}</span>
+              <span className="hover:text-[#e2434b] cursor-pointer truncate">{selectedCategory}</span>
+              {selectedSubCategory !== 'All' && (
+                <>
+                  <ChevronRight className="w-3.5 h-3.5 text-[#7a6274] shrink-0" />
+                  <span className="font-bold text-[#34222e] truncate">{selectedSubCategory}</span>
+                </>
+              )}
             </>
           )}
         </div>
 
-        {/* Category Header Banner */}
-        <div className="bg-[#fffbf7] rounded-3xl border border-[#f9bf8f]/60 p-5 sm:p-6 mb-6 shadow-xs">
+        {/* Search mode: one compact header instead of banner + category rail + callout */}
+        {isSearching && (
+          <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 min-w-0">
+            <h1 className="text-lg sm:text-xl font-bold text-[#34222e] min-w-0 truncate">
+              Results for <span className="text-[#0c831f]">“{initialSearchQuery.trim()}”</span>
+            </h1>
+            <span className="text-xs text-[#7a6274]">{resultCountLabel}</span>
+            {selectedCategory !== 'All Categories' && (
+              <button
+                type="button"
+                onClick={() => {
+                  onSelectCategory('All Categories');
+                  setSelectedSubCategory('All');
+                }}
+                title="Remove category filter"
+                className="inline-flex items-center gap-1 text-[11px] bg-[#fffbf7] border border-[#f9bf8f]/60 text-[#34222e] px-2 py-0.5 rounded-full font-semibold cursor-pointer hover:bg-[#fee9d7]"
+              >
+                in {selectedCategory}
+                <X className="w-3 h-3" />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleClearSearch}
+              className="ml-auto inline-flex items-center gap-1 text-xs font-bold text-[#7a6274] hover:text-[#e2434b] cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+              <span>Clear</span>
+            </button>
+          </div>
+        )}
+
+        {/* Category Header Banner (browsing only) */}
+        {!isSearching && (
+        <div className="bg-[#fffbf7] rounded-3xl border border-[#f9bf8f]/60 p-5 sm:p-6 mb-4 sm:mb-6 shadow-xs">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <div className="flex items-center space-x-2 text-xs font-bold text-[#0c831f] mb-1">
@@ -301,9 +346,11 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
             </div>
           </div>
         </div>
+        )}
 
-        {/* Quick-Commerce Category Pills / Chips Rail (Blinkit / Robu / Amazon style) */}
-        <div className="mb-6 bg-[#fffbf7] rounded-3xl border border-[#f9bf8f]/60 p-3 sm:p-4 shadow-xs">
+        {/* Quick-Commerce Category Pills / Chips Rail (browsing only; the sidebar and filters cover this while searching) */}
+        {!isSearching && (
+        <div className="mb-4 sm:mb-6 bg-[#fffbf7] rounded-3xl border border-[#f9bf8f]/60 p-3 sm:p-4 shadow-xs">
           <div className="flex items-center justify-between mb-2.5 px-1">
             <span className="text-xs font-bold text-[#34222e] flex items-center gap-1.5 uppercase tracking-wider">
               <LayoutGrid className="w-3.5 h-3.5 text-[#0c831f]" />
@@ -365,6 +412,7 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
             })}
           </div>
         </div>
+        )}
 
         {/* Catalog Main Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -540,83 +588,21 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
           {/* Right Product Grid Column */}
           <main className="lg:col-span-9 space-y-4">
             
-            {/* Semantic Search Result Callout Banner */}
-            {initialSearchQuery.trim() && (
-              <div className="bg-[#ecfdf5] border border-[#10b981]/30 rounded-2xl p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs animate-in fade-in duration-200">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-[#d1fae5] text-[#059669] flex items-center justify-center shrink-0 shadow-xs">
-                    <Search className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-[#34222e] font-medium">Search results for</span>
-                      <strong className="text-[#059669] font-bold text-sm">"{initialSearchQuery}"</strong>
-                      {selectedCategory !== 'All Categories' && (
-                        <span className="inline-flex items-center gap-1 text-[11px] bg-[#d1fae5] text-[#065f46] px-2 py-0.5 rounded-full font-semibold">
-                          in {selectedCategory}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              onSelectCategory('All Categories');
-                              setSelectedSubCategory('All');
-                            }}
-                            title="Remove category filter"
-                            className="hover:text-red-600 cursor-pointer ml-0.5"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-[#7a6274] text-[11px] block mt-0.5">
-                      {searchStatus === 'loading' ? 'Searching entire catalog…' : `${filteredProducts.length} item${filteredProducts.length === 1 ? '' : 's'} found`}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  {selectedCategory !== 'All Categories' && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onSelectCategory('All Categories');
-                        setSelectedSubCategory('All');
-                      }}
-                      className="px-2.5 py-1.5 rounded-xl bg-white border border-[#10b981]/30 text-[#0c831f] hover:bg-[#d1fae5]/40 text-xs font-bold transition cursor-pointer"
-                    >
-                      All Categories
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={handleClearSearch}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white border border-red-200 text-[#e2434b] hover:bg-rose-50 text-xs font-bold transition shadow-xs cursor-pointer"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                    <span>Clear Search</span>
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Controls Bar */}
-            <div className="bg-[#fffbf7] rounded-2xl border border-[#f9bf8f]/60 p-3.5 flex items-center justify-between shadow-xs">
+            {/* Controls Bar: filters (phone/tablet), sort, view. The count lives in the page header. */}
+            <div className="bg-[#fffbf7] rounded-2xl border border-[#f9bf8f]/60 p-2.5 sm:p-3.5 flex items-center justify-between gap-2 shadow-xs">
               
-              <div className="flex items-center space-x-3">
+              <div className="flex items-center gap-2 min-w-0">
                 {/* Mobile Filter Toggle */}
                 <button
                   onClick={() => setMobileFilterOpen(!mobileFilterOpen)}
-                  className="lg:hidden flex items-center space-x-1.5 text-xs font-bold text-[#34222e] bg-white px-3 py-1.5 rounded-xl border border-[#f9bf8f]/60 cursor-pointer"
+                  className="lg:hidden flex items-center space-x-1.5 text-xs font-bold text-[#34222e] bg-white px-3 py-1.5 rounded-xl border border-[#f9bf8f]/60 cursor-pointer shrink-0"
                 >
                   <SlidersHorizontal className="w-3.5 h-3.5 text-[#e2434b]" />
-                  <span>Filters {hasActiveFilters && '(Active)'}</span>
+                  <span>Filters{hasActiveFilters ? ' •' : ''}</span>
                 </button>
-
-                <div className="text-xs text-[#7a6274] hidden sm:block">
-                  Showing <strong className="text-[#34222e]">{filteredProducts.length}</strong> items
-                </div>
               </div>
 
-              <div className="flex items-center space-x-3">
+              <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                 {/* Sort Dropdown */}
                 <div className="flex items-center space-x-1.5 text-xs">
                   <span className="text-[#7a6274] hidden sm:inline">Sort:</span>

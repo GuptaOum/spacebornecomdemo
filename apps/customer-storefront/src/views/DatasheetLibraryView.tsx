@@ -47,13 +47,13 @@ export const DatasheetLibraryView: React.FC<DatasheetLibraryViewProps> = ({
       <div className="max-w-7xl mx-auto space-y-8">
         
         {/* Header */}
-        <div className="bg-white rounded-2xl p-8 md:p-10 text-white border border-slate-800 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="bg-slate-900 rounded-2xl p-6 sm:p-8 md:p-10 text-white border border-slate-800 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="max-w-2xl space-y-3">
             <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/30 text-orange-400 text-xs font-bold uppercase">
               <FileText className="w-3.5 h-3.5" />
               <span>Engineering Documentation Repository</span>
             </div>
-            <h1 className="text-3xl font-black text-white tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
               Technical Datasheets & 3D STEP CAD Library
             </h1>
             <p className="text-slate-300 text-xs sm:text-sm leading-relaxed">
@@ -62,9 +62,9 @@ export const DatasheetLibraryView: React.FC<DatasheetLibraryViewProps> = ({
           </div>
 
           <div className="bg-slate-800/80 border border-slate-700 rounded-xl p-4 shrink-0 text-xs space-y-1">
-            <span className="text-slate-400">Total Engineering Assets:</span>
-            <div className="text-lg font-black text-emerald-400 font-mono">1,840+ PDFs & STEPs</div>
-            <span className="text-[11px] text-slate-400 block">Verified by Spaceborn QC Engineers</span>
+            <span className="text-slate-400">Parts in this library:</span>
+            <div className="text-lg font-black text-emerald-400 font-mono">{PRODUCTS.length}</div>
+            <span className="text-[11px] text-slate-400 block">Datasheets and CAD files are linked where the vendor supplied them.</span>
           </div>
         </div>
 

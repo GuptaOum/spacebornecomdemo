@@ -186,10 +186,10 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Main Clean Header */}
       <div className="max-w-7xl mx-auto px-4 py-2.5">
-        <div className="flex items-center justify-between gap-3 md:gap-6">
+        <div className="flex items-center justify-between gap-2 sm:gap-3 md:gap-6 min-w-0">
           
           {/* Brand Logo & Location Switcher */}
-          <div className="flex items-center space-x-3 sm:space-x-5 shrink-0">
+          <div className="flex items-center space-x-2 sm:space-x-5 shrink-0 min-w-0">
             {/* Spaceborn Brand Logo (reduced size) */}
             <div 
               onClick={() => onNavigate('home')} 
@@ -199,10 +199,10 @@ export const Header: React.FC<HeaderProps> = ({
               <SpacebornLogo size="sm" subtitle={false} />
             </div>
 
-            {/* Delivery Location Selector */}
+            {/* Delivery Location Selector (tablet and up; phones get a chip in the search row) */}
             <div 
               onClick={() => setShowLocationModal(true)}
-              className="hidden sm:flex flex-col text-left cursor-pointer group pl-2 sm:pl-3 border-l border-[#f9bf8f]/60"
+              className="hidden md:flex flex-col text-left cursor-pointer group pl-2 sm:pl-3 border-l border-[#f9bf8f]/60"
             >
               <div className="flex items-center space-x-1 text-[#059669] font-bold text-xs">
                 <span>{deliveryLabel}</span>
@@ -321,15 +321,17 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           {/* Right Action Controls */}
-          <div className="flex items-center space-x-2 sm:space-x-3 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
             
             {/* Orders Action */}
             <button 
               onClick={() => onNavigate('orders')}
-              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#f9bf8f]/60 bg-[#fffbf7] hover:bg-[#fee9d7]/50 text-[#34222e] text-xs font-semibold transition-all cursor-pointer"
+              aria-label="Orders"
+              title="Orders"
+              className="inline-flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 rounded-xl border border-[#f9bf8f]/60 bg-[#fffbf7] hover:bg-[#fee9d7]/50 text-[#34222e] text-xs font-semibold transition-all cursor-pointer"
             >
               <Receipt className="w-4 h-4 text-[#7a6274]" />
-              <span>Orders</span>
+              <span className="hidden sm:inline">Orders</span>
             </button>
 
             {/* Account Profile Icon */}
@@ -351,10 +353,11 @@ export const Header: React.FC<HeaderProps> = ({
               ) : (
                 <button
                   onClick={() => onOpenAuth('login')}
-                  className="flex items-center space-x-2 bg-[#34222e] hover:bg-[#1a0f16] text-[#fee9d7] px-4 py-2 rounded-xl text-xs font-bold transition shadow-sm cursor-pointer active:scale-95"
+                  className="flex items-center gap-1.5 sm:gap-2 bg-[#34222e] hover:bg-[#1a0f16] text-[#fee9d7] px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition shadow-sm cursor-pointer active:scale-95"
                 >
                   <User className="w-4 h-4 text-[#f8cb46]" />
-                  <span>Sign In / Google</span>
+                  <span className="sm:hidden">Sign in</span>
+                  <span className="hidden sm:inline">Sign In / Google</span>
                 </button>
               )}
 
@@ -399,16 +402,19 @@ export const Header: React.FC<HeaderProps> = ({
             {/* Blinkit Green Cart Button */}
             <button
               onClick={onOpenCart}
-              className={`inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl bg-[#0c831f] hover:bg-[#0a6e1a] text-white font-bold text-xs sm:text-sm shadow-sm transition-all duration-150 active:scale-[0.96] cursor-pointer shrink-0 ${
+              aria-label={cartItemsCount > 0 ? `Cart, ${cartItemsCount} items` : 'Cart'}
+              className={`inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-xl bg-[#0c831f] hover:bg-[#0a6e1a] text-white font-bold text-xs sm:text-sm shadow-sm transition-all duration-150 active:scale-[0.96] cursor-pointer shrink-0 ${
                 isCartBumping ? 'animate-badge-bump ring-2 ring-[#0c831f]/40' : ''
               }`}
             >
               <ShoppingCart className={`w-4 h-4 transition-transform duration-200 ${isCartBumping ? 'scale-125' : ''}`} />
-              <span>{cartItemsCount > 0 ? `${cartItemsCount} items` : 'Cart'}</span>
+              {/* Phones: icon + count only. Larger screens: count and subtotal. */}
+              <span className="sm:hidden">{cartItemsCount > 0 ? cartItemsCount : 'Cart'}</span>
+              <span className="hidden sm:inline">{cartItemsCount > 0 ? `${cartItemsCount} items` : 'Cart'}</span>
               {cartItemsCount > 0 && (
                 <>
-                  <span className="text-white/60 text-xs">•</span>
-                  <span className="font-bold text-xs text-white">
+                  <span className="hidden sm:inline text-white/60 text-xs">•</span>
+                  <span className="hidden sm:inline font-bold text-xs text-white">
                     ₹{cartSubtotal.toLocaleString('en-IN')}
                   </span>
                 </>
@@ -419,8 +425,18 @@ export const Header: React.FC<HeaderProps> = ({
 
         </div>
 
-        {/* Mobile Search Bar */}
-        <div className="mt-2.5 block md:hidden">
+        {/* Mobile: delivery location chip + search bar */}
+        <div className="mt-2 block md:hidden space-y-2">
+          <button
+            type="button"
+            onClick={() => setShowLocationModal(true)}
+            className="flex w-full items-center gap-1.5 text-left cursor-pointer min-w-0"
+          >
+            <MapPin className="w-3.5 h-3.5 text-[#e2434b] shrink-0" />
+            <span className="text-xs font-bold text-[#34222e] truncate">{location.area}</span>
+            <ChevronDown className="w-3.5 h-3.5 text-[#34222e]/60 shrink-0" />
+            <span className="ml-auto text-[11px] font-bold text-[#059669] truncate shrink-0 max-w-[55%]">{deliveryLabel}</span>
+          </button>
           <div className="flex items-center rounded-xl bg-[#fee9d7]/50 border border-[#f9bf8f]/70 px-3 py-2 focus-within:bg-white focus-within:border-[#059669] transition-all">
             <Search className="w-4 h-4 text-[#7a6274] mr-2 shrink-0" />
             <input

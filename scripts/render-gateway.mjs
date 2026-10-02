@@ -467,7 +467,19 @@ function proxyRequest(req, res, targetPort) {
 }
 
 function getBannerHtml() {
+  // On phones the pill collapses to a small "Hub" toggle, lifted above the storefront's
+  // bottom cart dock so it never covers the cart or checkout buttons.
   return `
+<style>
+  @media (max-width: 640px) {
+    #spaceborn-demo-banner { bottom: 92px !important; right: 8px !important; left: auto !important; padding: 4px 8px !important; gap: 6px !important; font-size: 11px !important; border-radius: 999px !important; }
+    #spaceborn-demo-banner > span:first-child { display: none !important; }
+    #spaceborn-demo-banner:not(.open) > a { display: none !important; }
+    #spaceborn-demo-banner.open { flex-wrap: wrap !important; justify-content: flex-end !important; max-width: calc(100vw - 12px) !important; border-radius: 12px !important; }
+    #spaceborn-demo-banner-toggle { display: inline-block !important; }
+  }
+  #spaceborn-demo-banner-toggle { display: none; background: none; border: none; color: #38bdf8; font-weight: 700; cursor: pointer; font-size: 11px; padding: 0 2px; }
+</style>
 <div id="spaceborn-demo-banner" style="position:fixed;bottom:16px;right:16px;z-index:999999;background:rgba(15,23,42,0.92);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.15);border-radius:12px;box-shadow:0 10px 25px -5px rgba(0,0,0,0.5);padding:10px 14px;color:#fff;font-family:system-ui,-apple-system,sans-serif;font-size:12px;display:flex;align-items:center;gap:10px;">
   <span style="font-weight:700;letter-spacing:0.5px;color:#38bdf8;display:flex;align-items:center;gap:4px">
     <span>🚀</span> Spaceborn Hub:
@@ -476,6 +488,7 @@ function getBannerHtml() {
   <a href="/__switch?app=vendor" style="color:#f8fafc;text-decoration:none;padding:4px 8px;border-radius:6px;background:rgba(255,255,255,0.1);font-weight:500;" onmouseover="this.style.background='#10b981'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">🏪 Vendor Hub</a>
   <a href="/__switch?app=admin" style="color:#f8fafc;text-decoration:none;padding:4px 8px;border-radius:6px;background:rgba(255,255,255,0.1);font-weight:500;" onmouseover="this.style.background='#8b5cf6'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">🛡️ Admin Panel</a>
   <a href="/__portal" style="color:#94a3b8;text-decoration:none;padding:4px 6px;" title="Full System Hub">📑 Portal</a>
+  <button id="spaceborn-demo-banner-toggle" type="button" onclick="document.getElementById('spaceborn-demo-banner').classList.toggle('open')" title="Switch app">🚀 Hub</button>
   <button onclick="document.getElementById('spaceborn-demo-banner').style.display='none'" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:14px;padding:0 4px;" title="Dismiss">&times;</button>
 </div>
 `;
