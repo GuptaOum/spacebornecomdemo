@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import path from 'node:path';
 import type { Response } from 'express';
 import sharp from 'sharp';
+import { bumpCatalog } from '../cache.js';
 import { pool, withTransaction, type Db } from '../db/pool.js';
 import { conflict, notFound, unprocessable } from '../errors.js';
 import { logger } from '../logger.js';
@@ -354,8 +355,9 @@ export async function findSimilar(db: Db, submissionId: string): Promise<Similar
     merged.set(key, {
       ...prev,
       nameSim: Math.max(Number(prev.nameSim ?? 0), Number(row.nameSim ?? 0)),
-      textScore: prev.textScore ?? row.textScore,
-      imageScore: prev.imageScore ?? row.imageScore,
+      // The same product can surface from the text index and the image index; keep the stronger signal.
+      textScore: prev.textScore != null && row.textScore != null ? Math.max(Number(prev.textScore), Number(row.textScore)) : (prev.textScore ?? row.textScore),
+      imageScore: prev.imageScore != null && row.imageScore != null ? Math.max(Number(prev.imageScore), Number(row.imageScore)) : (prev.imageScore ?? row.imageScore),
       text_embedding: prev.text_embedding ?? row.text_embedding,
       embedding_model: prev.embedding_model ?? row.embedding_model,
     });
@@ -420,7 +422,7 @@ function newSku() {
 }
 
 export async function approveSubmission(id: string, mergeIntoProductId: string | null, cities: CityScope = null) {
-  return withTransaction(async (c) => {
+  const approved = await withTransaction(async (c) => {
     const { rows } = await c.query(
       `select s.id, s.status, s.store_id, s.name, s.description, s.category_id, s.brand, s.mrp, s.price, s.stock,
               s.image_key, s.text_embedding, s.embedding_model, s.image_embedding, s.image_embedding_model,
@@ -436,13 +438,29 @@ export async function approveSubmission(id: string, mergeIntoProductId: string |
 
     let productId = mergeIntoProductId;
     if (productId) {
-      const product = await c.query('select id from products where id = $1 and is_active', [productId]);
+      const product = await c.query<{ mrp: string; category_id: string }>(
+        'select mrp, category_id from products where id = $1 and is_active',
+        [productId],
+      );
       if (!product.rows[0]) throw notFound('Product not found');
       const existing = await c.query('select 1 from inventory where store_id = $1 and product_id = $2', [sub.store_id, productId]);
       if (existing.rows[0]) throw conflict('This store already lists that product. Edit it from inventory instead.');
+      // The customer sees the catalog product's MRP, so the attached offer must sit under it, the
+      // same rule a vendor meets when pricing from inventory.
+      if (Number(sub.price) > Number(product.rows[0].mrp)) {
+        throw unprocessable(
+          'price_above_mrp',
+          `The vendor's price ₹${sub.price} is above this product's MRP of ₹${product.rows[0].mrp}. Reject with that reason so they can reprice.`,
+        );
+      }
+      if (product.rows[0].category_id !== sub.category_id) {
+        throw unprocessable('category_mismatch', 'The proposal is in a different category from this product. Approve it as new or reject it.');
+      }
     } else {
       let inserted = null;
       for (let attempt = 0; attempt < 3 && !inserted; attempt++) {
+        // A unique-key failure aborts the transaction in Postgres, so each try gets its own savepoint.
+        await c.query('savepoint sku');
         try {
           inserted = await c.query<{ id: string }>(
             `insert into products
@@ -453,7 +471,10 @@ export async function approveSubmission(id: string, mergeIntoProductId: string |
             [newSku(), sub.name, sub.category_id, sub.brand, sub.description, sub.image_key, sub.mrp,
               sub.text_embedding, sub.embedding_model, sub.image_embedding, sub.image_embedding_model],
           );
+          await c.query('release savepoint sku');
         } catch (err) {
+          await c.query('rollback to savepoint sku');
+          await c.query('release savepoint sku');
           if ((err as { code?: string }).code !== '23505') throw err;
         }
       }
@@ -471,6 +492,8 @@ export async function approveSubmission(id: string, mergeIntoProductId: string |
     ]);
     return { id, status: 'approved' as const, productId, city: sub.city as string, name: sub.name as string };
   });
+  void bumpCatalog();
+  return approved;
 }
 
 export async function rejectSubmission(id: string, reason: string, cities: CityScope = null) {

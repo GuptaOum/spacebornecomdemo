@@ -70,7 +70,7 @@ export function OrdersTab() {
     return list.filter(
       (o) =>
         String(o.orderNumber).includes(q) ||
-        o.storeName.toLowerCase().includes(q) ||
+        (o.storeName ?? '').toLowerCase().includes(q) ||
         o.deliveryAddress.fullName.toLowerCase().includes(q) ||
         o.deliveryAddress.phone.includes(q) ||
         o.items?.some((i) => i.name.toLowerCase().includes(q) || i.sku.toLowerCase().includes(q)),

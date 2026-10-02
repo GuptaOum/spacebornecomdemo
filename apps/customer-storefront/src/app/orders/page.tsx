@@ -11,6 +11,22 @@ import { useLoad } from '@spaceborn/web-core/use-load';
 const PROGRESS: OrderStatus[] = ['placed', 'accepted', 'packing', 'ready_for_pickup', 'out_for_delivery', 'delivered'];
 const ACTIVE: OrderStatus[] = ['pending_payment', ...PROGRESS.slice(0, -1)];
 
+function groupOrders(orders: Order[]) {
+  const groups: { key: string; orders: Order[] }[] = [];
+  const index = new Map<string, number>();
+  for (const order of orders) {
+    const key = order.checkoutId ?? order.id;
+    const at = index.get(key);
+    if (at === undefined) {
+      index.set(key, groups.length);
+      groups.push({ key, orders: [order] });
+    } else {
+      groups[at]!.orders.push(order);
+    }
+  }
+  return groups;
+}
+
 function OrderCard({ order, onCancelled }: { order: Order; onCancelled: () => void }) {
   const [cancelling, setCancelling] = useState(false);
   const step = PROGRESS.indexOf(order.status);
@@ -32,9 +48,7 @@ function OrderCard({ order, onCancelled }: { order: Order; onCancelled: () => vo
     <article className="rounded-3xl border border-[#f9bf8f]/60 bg-[#fffbf7] p-5 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <p className="text-sm font-bold text-[#34222e]">
-            Order #{order.orderNumber} · {order.storeName}
-          </p>
+          <p className="text-sm font-bold text-[#34222e]">Order #{order.orderNumber}</p>
           <p className="text-xs text-[#7a6274]">{formatDateTime(order.placedAt ?? order.createdAt)}</p>
         </div>
         <span className="rounded-full bg-[#f2fcf4] px-3 py-1 text-xs font-bold text-[#0c831f]">
@@ -73,10 +87,12 @@ function OrderCard({ order, onCancelled }: { order: Order; onCancelled: () => vo
           <span>Delivery fee</span>
           <span>{order.deliveryFee === 0 ? 'FREE' : formatInr(order.deliveryFee)}</span>
         </div>
-        <div className="flex justify-between">
-          <span>Platform fee</span>
-          <span>{formatInr(order.platformFee)}</span>
-        </div>
+        {order.platformFee > 0 && (
+          <div className="flex justify-between">
+            <span>Platform fee</span>
+            <span>{formatInr(order.platformFee)}</span>
+          </div>
+        )}
         <div className="flex justify-between text-sm font-bold text-[#34222e]">
           <span>Total</span>
           <span>{formatInr(order.grandTotal)}</span>
@@ -163,7 +179,19 @@ export default function OrdersPage() {
           </button>
         </div>
       )}
-      {orders.data?.map((order) => <OrderCard key={order.id} order={order} onCancelled={orders.reload} />)}
+      {groupOrders(orders.data ?? []).map((group) => (
+        <section key={group.key} className="space-y-3">
+          {group.orders.length > 1 && (
+            <div className="flex items-center justify-between px-1 text-xs text-[#7a6274]">
+              <span className="font-semibold text-[#34222e]">One payment · {group.orders.length} deliveries · platform fee charged once</span>
+              <span className="font-bold text-[#34222e]">{formatInr(group.orders.reduce((sum, order) => sum + order.grandTotal, 0))}</span>
+            </div>
+          )}
+          {group.orders.map((order) => (
+            <OrderCard key={order.id} order={order} onCancelled={orders.reload} />
+          ))}
+        </section>
+      ))}
     </div>
   );
 }

@@ -23,6 +23,7 @@ interface StoreInventoryItem {
   price: number;
   stock: number;
   unitsSold: number;
+  unitsHeld: number;
   isListed: boolean;
   updatedAt: string;
 }
@@ -71,8 +72,9 @@ function StoreInventoryPanel({ storeId }: { storeId: string }) {
                     <th className="px-3 py-2 font-semibold">Category</th>
                     <th className="px-3 py-2 text-right font-semibold">Price</th>
                     <th className="px-3 py-2 text-right font-semibold">MRP</th>
-                    <th className="px-3 py-2 text-right font-semibold">Available</th>
+                    <th className="px-3 py-2 text-right font-semibold">On shelf</th>
                     <th className="px-3 py-2 text-right font-semibold">Sold</th>
+                    <th className="px-3 py-2 text-right font-semibold" title="Already off the shelf for checkouts not paid yet">Awaiting payment</th>
                     <th className="px-3 py-2 font-semibold">Status</th>
                     <th className="px-3 py-2 font-semibold">Updated</th>
                   </tr>
@@ -97,6 +99,7 @@ function StoreInventoryPanel({ storeId }: { storeId: string }) {
                       <td className="px-3 py-2 text-right text-slate-500">{formatInr(it.mrp)}</td>
                       <td className={`px-3 py-2 text-right font-semibold ${it.stock === 0 ? 'text-red-700' : it.stock <= 5 ? 'text-amber-700' : 'text-slate-800'}`}>{it.stock}</td>
                       <td className="px-3 py-2 text-right">{it.unitsSold}</td>
+                      <td className="px-3 py-2 text-right">{it.unitsHeld}</td>
                       <td className="px-3 py-2">
                         {!it.isActive ? (
                           <span className="rounded bg-red-100 px-1.5 py-0.5 font-semibold text-red-700">Product inactive</span>

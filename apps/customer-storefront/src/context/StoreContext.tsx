@@ -107,9 +107,6 @@ function readJson<T>(key: string): T | null {
 export function toProduct(p: CatalogOffer): Product {
   return {
     id: p.id,
-    vendorId: p.storeId,
-    vendorName: p.storeName,
-    city: p.storeCity,
     name: p.name,
     sku: p.sku,
     category: p.categoryName,

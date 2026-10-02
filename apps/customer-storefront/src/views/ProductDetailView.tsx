@@ -103,8 +103,8 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
       );
       setPinStatus(
         offer.stock > 0
-          ? { tone: 'ok', text: `Delivers to ${pincode} in about ${offer.etaMinutes} min from ${offer.storeName}.` }
-          : { tone: 'warn', text: `A store near ${pincode} lists this item but it is out of stock right now.` },
+          ? { tone: 'ok', text: `Delivers to ${pincode} in about ${offer.etaMinutes} min. ${offer.stock} in stock near you.` }
+          : { tone: 'warn', text: `This item is listed near ${pincode} but it is out of stock right now.` },
       );
     } catch {
       setPinStatus({ tone: 'warn', text: `No store near ${pincode} stocks this item yet.` });
@@ -189,22 +189,18 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
                 )}
               </div>
 
-              {/* Where it ships from */}
-              {product.vendorName && (
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-[#f9bf8f]/50 bg-white px-3.5 py-2.5 text-sm">
-                  <span className="inline-flex items-center gap-1.5">
-                    <Store className="w-4 h-4 text-[#0c831f]" />
-                    Sold by <span className="font-semibold">{product.vendorName}</span>
-                    {product.storeDistanceKm !== undefined && <span className="text-[#7a6274]">· {product.storeDistanceKm} km away</span>}
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-[#f9bf8f]/50 bg-white px-3.5 py-2.5 text-sm">
+                <span className="inline-flex items-center gap-1.5">
+                  <Store className="w-4 h-4 text-[#0c831f]" />
+                  Combined stock near you
+                </span>
+                {product.deliveryMins && (
+                  <span className="inline-flex items-center gap-1.5 text-[#0c831f] font-semibold">
+                    <Timer className="w-4 h-4" />
+                    Delivers in about {product.deliveryMins} min
                   </span>
-                  {product.deliveryMins && (
-                    <span className="inline-flex items-center gap-1.5 text-[#0c831f] font-semibold">
-                      <Timer className="w-4 h-4" />
-                      Delivers in about {product.deliveryMins} min
-                    </span>
-                  )}
-                </div>
-              )}
+                )}
+              </div>
 
               {/* Price */}
               <div className="space-y-1">
@@ -221,10 +217,10 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
                   Inclusive of {product.gstRate || 18}% GST
                   {inStock ? (
                     <span className={`ml-2 font-semibold ${lowStock ? 'text-[#e2434b]' : 'text-[#0c831f]'}`}>
-                      {lowStock ? `Only ${product.stock} left` : `In stock (${product.stock}${product.storeCount && product.storeCount > 1 ? ` at ${product.storeCount} stores` : ''})`}
+                      {lowStock ? `Only ${product.stock} left near you` : `In stock near you (${product.stock})`}
                     </span>
                   ) : (
-                    <span className="ml-2 font-semibold text-[#e2434b]">Out of stock at your nearest store</span>
+                    <span className="ml-2 font-semibold text-[#e2434b]">Out of stock near you</span>
                   )}
                 </p>
               </div>

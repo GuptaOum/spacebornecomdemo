@@ -146,13 +146,13 @@ const NEARBY = `
   )`;
 
 /**
- * Best single-store stock for each product across every nearby store. Lets us tell "nobody near you
- * has this" apart from "somebody has it, just not the store supplying the rest of your cart".
+ * Pooled stock for each product across every nearby store: the same number the catalog shows the
+ * customer, so a shortfall message never claims less exists than the page advertised.
  */
 export async function availabilityNearby(db: Db, lat: number, lng: number, productIds: string[]): Promise<Map<string, number>> {
   const { rows } = await db.query<{ product_id: string; stock: number }>(
     `with ${NEARBY}
-     select i.product_id, max(i.stock)::int as stock
+     select i.product_id, sum(i.stock)::int as stock
        from inventory i
        join nearby n on n.id = i.store_id
        join products p on p.id = i.product_id
@@ -226,6 +226,10 @@ export async function resolveCart(db: Db, lat: number, lng: number, quantities: 
     return { store: null, lines: [], unavailable: [...quantities.keys()], elsewhere: [], pricing: null, nearbyStores: 0 };
   }
 
+  // Same nearest-first split the order uses, so the total on screen is the total that gets charged.
+  const alloc = await allocateNearest(db, lat, lng, quantities);
+  if (!alloc.short.length && alloc.slices.length > 0) return resolutionFromSlices(alloc.slices);
+
   const ids = [...quantities.keys()];
   const { rows } = await db.query<{ product_id: string; price: number; stock: number }>(
     `select i.product_id, i.price, i.stock
@@ -249,10 +253,6 @@ export async function resolveCart(db: Db, lat: number, lng: number, quantities: 
   const pricing = okLines.length ? priceOrder(okLines.map((l) => ({ unitPrice: l.unitPrice!, quantity: l.quantity })), best.distanceKm) : null;
 
   const short = lines.filter((l) => !l.ok);
-  if (short.length) {
-    const alloc = await allocateNearest(db, lat, lng, quantities);
-    if (!alloc.short.length && alloc.slices.length > 0) return resolutionFromSlices(alloc.slices);
-  }
   const nearby = short.length ? await availabilityNearby(db, lat, lng, short.map((l) => l.productId)) : new Map<string, number>();
   const problems = classifyShortfall(
     new Map(short.map((l) => [l.productId, l.quantity])),
@@ -289,7 +289,10 @@ function resolutionFromSlices(slices: StoreSlice[]): Resolution {
     for (const line of slice.lines) {
       const existing = lines.find((l) => l.productId === line.productId);
       if (existing) {
-        existing.quantity += line.quantity;
+        // One line on screen for a product that ships from two shops: show the average paise.
+        const nextQty = existing.quantity + line.quantity;
+        existing.unitPrice = round2((existing.unitPrice! * existing.quantity + line.unitPrice * line.quantity) / nextQty);
+        existing.quantity = nextQty;
         existing.available += line.quantity;
       } else {
         lines.push({

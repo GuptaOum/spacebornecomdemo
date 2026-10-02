@@ -18,11 +18,8 @@ export interface Category {
   name: string;
 }
 
+/** Service coverage near the customer. Shops are anonymous: distance and speed only. */
 export interface NearbyStore {
-  id: string;
-  name: string;
-  city: string;
-  addressLine: string;
   distanceKm: number;
   etaMinutes: number;
 }
@@ -59,16 +56,13 @@ export interface CatalogProduct {
   badges: ProductBadge[];
   /** True when `badges` contains `our_pick`; kept for older callers. */
   isChoice?: boolean;
-  vendorId?: string;
-  vendorName?: string;
-  city?: string;
 }
 
-/** A product as offered near the customer: the best nearby store's price/stock, chosen by the server. */
+/**
+ * A product as offered near the customer: the nearest in-stock shop's price and the pooled stock,
+ * chosen by the server. The shop itself is never exposed.
+ */
 export interface CatalogOffer extends CatalogProduct {
-  storeId: string;
-  storeName: string;
-  storeCity: string;
   distanceKm: number;
   prepMinutes: number;
   etaMinutes: number;
@@ -77,7 +71,8 @@ export interface CatalogOffer extends CatalogProduct {
 }
 
 export interface CartResolution {
-  store: { id: string; name: string; city: string; distanceKm: number; etaMinutes: number } | null;
+  /** The nearest dispatching shop's distance and ETA. Null when nothing near here can serve the cart. */
+  store: { distanceKm: number; etaMinutes: number } | null;
   lines: { productId: string; quantity: number; unitPrice: number | null; available: number; ok: boolean }[];
   /** Nothing near this location stocks these. */
   unavailable: string[];
@@ -122,9 +117,10 @@ export interface Order {
   id: string;
   orderNumber: number;
   status: OrderStatus;
-  storeId: string;
-  storeName: string;
-  storePhone: string;
+  /** Present for vendors and admins. Customers never receive the shop behind a delivery. */
+  storeId?: string;
+  storeName?: string;
+  storePhone?: string;
   itemsTotal: number;
   deliveryFee: number;
   platformFee: number;
@@ -139,6 +135,7 @@ export interface Order {
   deliveredAt: string | null;
   createdAt: string;
   paymentStatus: string | null;
+  checkoutId?: string | null;
   items: OrderItem[];
   history?: { from: OrderStatus | null; to: OrderStatus; actorRole: string; note: string | null; at: string }[];
 }

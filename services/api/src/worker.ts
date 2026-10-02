@@ -18,6 +18,18 @@ interface OutboxRow {
   attempts: number;
 }
 
+// A payment is refunded once the ledger adds up to what was paid. A partly refunded payment goes
+// back to captured so the admin's "refunds pending" count only shows refunds that are still owed.
+async function settleRefundStatus(paymentId: string) {
+  await pool.query(
+    `update payments p set status = case
+         when coalesce((select sum(r.amount_paise) from payment_refunds r where r.payment_id = p.id), 0) >= p.amount_paise then 'refunded'
+         else 'captured' end::payment_status
+      where p.id = $1 and p.status in ('captured', 'refund_pending')`,
+    [paymentId],
+  );
+}
+
 async function handle(row: OutboxRow) {
   switch (row.topic) {
     case 'refund.requested': {
@@ -25,20 +37,42 @@ async function handle(row: OutboxRow) {
         paymentId: string;
         orderId?: string;
         jobId?: string;
-        providerPaymentId: string;
+        providerPaymentId: string | null;
         amountPaise: number;
       };
-      const partial = Boolean((row.payload as { partial?: boolean }).partial);
-      const current = await pool.query<{ status: string }>('select status from payments where id = $1', [paymentId]);
-      const status = current.rows[0]?.status;
-      if (partial) {
-        if (status === 'refunded' || !providerPaymentId) return;
-      } else if (status !== 'refund_pending') return;
-      if (config.paymentsMode === 'razorpay' && providerPaymentId) {
-        await refundPayment(providerPaymentId, amountPaise, (orderId ?? jobId)!);
+      const reference = (orderId ?? jobId)!;
+      const current = await pool.query<{ status: string; amount_paise: number; refunded: number; done: boolean }>(
+        `select p.status, p.amount_paise,
+                coalesce((select sum(r.amount_paise) from payment_refunds r where r.payment_id = p.id), 0)::bigint as refunded,
+                exists(select 1 from payment_refunds r where r.payment_id = p.id and r.reference = $2) as done
+           from payments p where p.id = $1`,
+        [paymentId, reference],
+      );
+      const payment = current.rows[0];
+      if (!payment || payment.status === 'created' || payment.status === 'failed') return;
+      if (payment.done) {
+        await settleRefundStatus(paymentId);
+        return;
       }
-      if (!partial) await pool.query(`update payments set status = 'refunded' where id = $1 and status = 'refund_pending'`, [paymentId]);
-      logger.info({ orderId, jobId, amountPaise }, 'refund issued');
+      // Never refund more than what was paid, whatever the request says.
+      const remaining = Number(payment.amount_paise) - Number(payment.refunded);
+      const amount = Math.min(Number(amountPaise), remaining);
+      if (amount <= 0) {
+        await settleRefundStatus(paymentId);
+        return;
+      }
+      let providerRefundId: string | null = null;
+      if (config.paymentsMode === 'razorpay') {
+        if (!providerPaymentId) throw new Error(`payment ${paymentId} has no provider payment id to refund`);
+        providerRefundId = (await refundPayment(providerPaymentId, amount, reference)).id ?? null;
+      }
+      await pool.query(
+        `insert into payment_refunds (payment_id, reference, amount_paise, provider_refund_id)
+         values ($1, $2, $3, $4) on conflict (payment_id, reference) do nothing`,
+        [paymentId, reference, amount, providerRefundId],
+      );
+      await settleRefundStatus(paymentId);
+      logger.info({ orderId, jobId, amountPaise: amount }, 'refund issued');
       return;
     }
     case 'fab_job.submitted':

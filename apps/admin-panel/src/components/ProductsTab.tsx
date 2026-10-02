@@ -14,6 +14,7 @@ interface StoreStockInfo {
   price: number;
   stock: number;
   unitsSold?: number;
+  unitsHeld?: number;
 }
 
 interface AdminProduct {
@@ -535,7 +536,7 @@ export function ProductsTab() {
                             </span>
                             <div className="text-right">
                               <span className="font-bold text-slate-900">{formatInr(s.price)}</span>
-                              <span className="ml-1.5 text-[11px] font-medium text-emerald-700">({s.stock} available, {s.unitsSold ?? 0} sold)</span>
+                              <span className="ml-1.5 text-[11px] font-medium text-emerald-700">({s.stock} on shelf, {s.unitsSold ?? 0} sold{(s.unitsHeld ?? 0) > 0 ? `, ${s.unitsHeld} awaiting payment` : ''})</span>
                             </div>
                           </div>
                         ))}

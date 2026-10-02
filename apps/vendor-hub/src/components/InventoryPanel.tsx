@@ -17,6 +17,7 @@ interface InventoryItem {
   price: number;
   stock: number;
   unitsSold?: number;
+  unitsHeld?: number;
   isListed: boolean;
 }
 
@@ -91,7 +92,14 @@ function Row({ item, onSaved, onDeleted }: { item: InventoryItem; onSaved: (save
       </td>
       <td className="py-2 pr-2">
         <span className={`font-bold ${item.stock === 0 ? 'text-red-600' : item.stock <= LOW_STOCK ? 'text-amber-600' : 'text-slate-900'}`}>{item.stock}</span>
-        <span className="text-slate-500">sold {item.unitsSold ?? 0}</span>
+        <span className="text-slate-500"> on shelf · sold {item.unitsSold ?? 0}</span>
+        {(item.unitsHeld ?? 0) > 0 && (
+          <span className="text-amber-700" title="Taken off the shelf for checkouts that are not paid yet. They come back if payment does not complete.">
+            {' '}· {item.unitsHeld} awaiting payment
+          </span>
+        )}
+        {item.stock === 0 && (item.unitsSold ?? 0) > 0 && <span className="block text-[10px] text-red-600">Restock to keep selling</span>}
+        {item.stock > 0 && item.stock <= LOW_STOCK && <span className="block text-[10px] text-amber-700">Running low</span>}
         {deltaNumber !== 0 && <span className="ml-1 text-xs text-amber-700">→ {nextStock}</span>}
       </td>
       <td className="py-2 pr-2">

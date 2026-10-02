@@ -36,7 +36,9 @@ adminRouter.get('/overview', async (req, res) => {
               where o.created_at >= date_trunc('day', now()) and o.status <> 'pending_payment' and ${CITY('$1')}) as "ordersToday",
             (select coalesce(sum(o.grand_total), 0) from orders o join stores s on s.id = o.store_id
               where o.status = 'delivered' and o.delivered_at >= date_trunc('day', now()) and ${CITY('$1')}) as "gmvToday",
-            (select count(*) from payments p join orders o on o.id = p.order_id join stores s on s.id = o.store_id
+            (select count(distinct p.id) from payments p
+              join orders o on o.id = p.order_id or (p.checkout_id is not null and o.checkout_id = p.checkout_id)
+              join stores s on s.id = o.store_id
               where p.status = 'refund_pending' and ${CITY('$1')}) as "refundsPending",
             (select count(*) from service_listings l join stores s on s.id = l.store_id
               where l.status = 'pending' and ${CITY('$1')}) as "pendingServices",
@@ -159,6 +161,10 @@ adminRouter.get('/stores/:id/inventory', async (req, res) => {
                from order_items oi join orders o on o.id = oi.order_id
               where oi.product_id = p.id and o.store_id = i.store_id
                 and o.status not in ('pending_payment', 'cancelled', 'expired')) as "unitsSold",
+            (select coalesce(sum(oi.quantity), 0)::int
+               from order_items oi join orders o on o.id = oi.order_id
+              where oi.product_id = p.id and o.store_id = i.store_id
+                and o.status = 'pending_payment') as "unitsHeld",
             case when p.image_key is not null then '/v1/catalog/products/' || p.id::text || '/image' else p.image_url end as "imageUrl"
        from inventory i
        join products p on p.id = i.product_id
@@ -252,6 +258,8 @@ for (const decision of ['approve', 'reject', 'suspend'] as const) {
   adminRouter.post(`/stores/:id/${decision}`, async (req, res) => {
     const note = decision === 'approve' ? null : parse(z.object({ reason }), req.body).reason;
     const store = await decideStore(parse(uuid, req.params.id), status, note, scopeCities(adminScope(req)));
+    // A suspended shop's stock leaves the pooled catalog right away; a reinstated one can come back.
+    await bumpCatalog();
     await audit(req, `store.${decision}`, { type: 'store', id: store.id, city: store.city }, { name: store.name, reason: note });
     res.json({ store: { id: store.id, status: store.status } });
   });
@@ -276,7 +284,10 @@ adminRouter.get('/products', async (req, res) => {
                  'storeId', s.id, 'storeName', s.name, 'city', s.city, 'price', i.price, 'stock', i.stock,
                  'unitsSold', (select coalesce(sum(oi.quantity), 0)::int from order_items oi join orders o on o.id = oi.order_id
                                 where oi.product_id = p.id and o.store_id = s.id
-                                  and o.status not in ('pending_payment', 'cancelled', 'expired'))
+                                  and o.status not in ('pending_payment', 'cancelled', 'expired')),
+                 'unitsHeld', (select coalesce(sum(oi.quantity), 0)::int from order_items oi join orders o on o.id = oi.order_id
+                                where oi.product_id = p.id and o.store_id = s.id
+                                  and o.status = 'pending_payment')
                )
                  from inventory i join stores s on s.id = i.store_id where i.product_id = p.id and i.is_listed),
               '[]'::json

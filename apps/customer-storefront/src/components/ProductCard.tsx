@@ -159,9 +159,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           {/* Robu-Style SKU Line */}
           <div className="flex items-center justify-between text-[9.5px] text-[#7a6274] font-mono mb-1">
             <span>SKU: {product.sku}</span>
-            {product.vendorName && (
+            {product.stock > 0 && (
               <span className="text-[#059669] font-medium truncate max-w-[100px]">
-                {product.city || 'Express'}
+                {product.stock} near you
               </span>
             )}
           </div>

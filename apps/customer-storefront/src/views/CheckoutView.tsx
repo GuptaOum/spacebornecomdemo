@@ -233,9 +233,9 @@ export function CheckoutView({ onNavigate }: CheckoutViewProps) {
             <p className="mb-3 text-xs text-[#7a6274]">
               Delivering near <b>{location.area}</b>
               {resolution?.store
-                ? ` · fulfilled by ${resolution.store.name} (${resolution.store.distanceKm} km away, ~${resolution.store.etaMinutes} min)`
+                ? ` · about ${resolution.store.etaMinutes} min${(resolution.deliveries ?? 1) > 1 ? `, ${resolution.deliveries} deliveries` : ''}`
                 : resolving
-                  ? ' · finding the fastest store…'
+                  ? ' · checking stock near you…'
                   : ''}
               .
             </p>

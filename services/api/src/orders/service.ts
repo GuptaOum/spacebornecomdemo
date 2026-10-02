@@ -3,13 +3,13 @@ import type pg from 'pg';
 import { config } from '../config.js';
 import { pool, withTransaction, type Db } from '../db/pool.js';
 import { conflict, forbidden, HttpError, notFound, unprocessable } from '../errors.js';
-import { haversineKm } from '../lib/geo.js';
 import { logger } from '../logger.js';
+import { bumpCatalog } from '../cache.js';
 import { enqueue } from '../outbox.js';
 import { markFabPaid } from '../fabrication/service.js';
 import { createProviderOrder } from '../payments/razorpay.js';
 import { allocateNearest, availabilityNearby, classifyShortfall, rankStores, type StoreSlice } from './fulfilment.js';
-import { deliveryFee, etaMinutes, MAX_ITEMS_PER_LINE, PLATFORM_FEE, priceOrder, RESERVATION_MINUTES, toPaise } from './pricing.js';
+import { deliveryFee, etaMinutes, MAX_ITEMS_PER_LINE, PLATFORM_FEE, RESERVATION_MINUTES, toPaise } from './pricing.js';
 import { canTransition, HOLDS_STOCK, PAID_STATUSES, type Actor, type OrderStatus } from './status.js';
 
 export interface DeliveryAddress {
@@ -66,6 +66,12 @@ const withoutOtp = (order: OrderView): OrderView => {
   return rest as OrderView;
 };
 
+// Customers buy from the platform, not from a shop: the shop behind a delivery stays private.
+const withoutStore = (order: OrderView): OrderView => {
+  const { storeId: _id, storeName: _name, storePhone: _phone, ...rest } = order;
+  return rest as OrderView;
+};
+
 export async function getOrder(db: Db, orderId: string, viewer: ActorContext): Promise<OrderView> {
   const { rows } = await db.query<OrderView>(`${ORDER_SELECT} where o.id = $1`, [orderId]);
   const order = rows[0];
@@ -77,7 +83,7 @@ export async function getOrder(db: Db, orderId: string, viewer: ActorContext): P
     [orderId],
   );
   const view = { ...order, history: history.rows };
-  return viewer.role === 'customer' ? view : withoutOtp(view);
+  return viewer.role === 'customer' ? withoutStore(view) : withoutOtp(view);
 }
 
 function canView(order: OrderView, viewer: ActorContext) {
@@ -87,11 +93,20 @@ function canView(order: OrderView, viewer: ActorContext) {
 }
 
 export async function listCustomerOrders(customerId: string, limit: number) {
+  // A split checkout is shown as one purchase, so every delivery of a listed checkout comes along
+  // even when the page limit would have cut the group in half.
   const { rows } = await pool.query<OrderView>(
-    `${ORDER_SELECT} where o.customer_id = $1 order by o.created_at desc limit $2`,
+    `with page as (
+       select id, checkout_id from orders where customer_id = $1 order by created_at desc limit $2
+     )
+     ${ORDER_SELECT}
+      where o.customer_id = $1
+        and (o.id in (select id from page)
+             or o.checkout_id in (select checkout_id from page where checkout_id is not null))
+      order by o.created_at desc`,
     [customerId, limit],
   );
-  return rows;
+  return rows.map(withoutStore);
 }
 
 export async function listStoreOrders(storeId: string, statuses: OrderStatus[] | null, limit: number) {
@@ -185,17 +200,25 @@ async function writeSplit(c: Db, slices: StoreSlice[], input: PlaceOrderInput) {
     );
     if (!store.rows[0]) throw unprocessable('store_unavailable', 'A store near you just stopped taking orders. Please try again.');
     const productIds = slice.lines.map((line) => line.productId);
-    const inventory = await c.query<{ product_id: string; stock: number }>(
-      `select product_id, stock from inventory
-        where store_id = $1 and product_id = any($2::uuid[])
-        order by product_id
-        for update`,
+    // Re-read stock, listing and price under the row lock. The allocation ran without locks, so a
+    // vendor may have unlisted or repriced in between; a 409 sends the caller back to allocate
+    // with the fresh rows rather than charging a price the customer never saw.
+    const inventory = await c.query<{ product_id: string; stock: number; price: string; sellable: boolean }>(
+      `select i.product_id, i.stock, i.price, (i.is_listed and p.is_active) as sellable
+         from inventory i join products p on p.id = i.product_id
+        where i.store_id = $1 and i.product_id = any($2::uuid[])
+        order by i.product_id
+        for update of i`,
       [slice.storeId, productIds],
     );
-    const stock = new Map(inventory.rows.map((row) => [row.product_id, row.stock]));
+    const rows = new Map(inventory.rows.map((row) => [row.product_id, row]));
     for (const line of slice.lines) {
-      if ((stock.get(line.productId) ?? 0) < line.quantity) {
+      const row = rows.get(line.productId);
+      if (!row || !row.sellable || row.stock < line.quantity) {
         throw conflict('Some items in your cart are no longer available');
+      }
+      if (Number(row.price) !== line.unitPrice) {
+        throw conflict('A price changed while you were checking out', { code: 'price_changed' });
       }
     }
     await c.query(
@@ -216,9 +239,11 @@ async function writeSplit(c: Db, slices: StoreSlice[], input: PlaceOrderInput) {
     return { slice, items, fee };
   });
   const grandTotal = round2(itemsTotal + deliverySum + PLATFORM_FEE);
+  // Two in-flight requests with the same key both get here; the unique key lets the loser replay.
   const checkout = await c.query<{ id: string }>(
     `insert into checkouts (customer_id, idempotency_key, items_total, delivery_fee, platform_fee, grand_total, delivery_address)
      values ($1, $2, $3, $4, $5, $6, $7)
+     on conflict (customer_id, idempotency_key) do nothing
      returning id`,
     [
       input.customerId,
@@ -230,14 +255,18 @@ async function writeSplit(c: Db, slices: StoreSlice[], input: PlaceOrderInput) {
       JSON.stringify(input.address),
     ],
   );
-  const checkoutId = checkout.rows[0]!.id;
+  const checkoutId = checkout.rows[0]?.id;
+  if (!checkoutId) throw new IdempotentReplay();
   let firstId = '';
   for (const [index, part] of parts.entries()) {
+    // The platform fee is charged once per checkout and booked on the first delivery, so the
+    // per-order totals add up to the payment and a refund of every delivery returns all of it.
+    const platformFee = index === 0 ? PLATFORM_FEE : 0;
     const inserted = await c.query<{ id: string }>(
       `insert into orders (customer_id, store_id, checkout_id, items_total, delivery_fee, platform_fee, grand_total,
                            delivery_address, delivery_lat, delivery_lng, distance_km, eta_minutes,
                            handover_otp, reserved_until, idempotency_key)
-       values ($1, $2, $3, $4, $5, 0, $6, $7, $8, $9, $10, $11, $12, now() + make_interval(mins => $13), $14)
+       values ($1, $2, $3, $4, $5, $15, $6, $7, $8, $9, $10, $11, $12, now() + make_interval(mins => $13), $14)
        returning id`,
       [
         input.customerId,
@@ -245,7 +274,7 @@ async function writeSplit(c: Db, slices: StoreSlice[], input: PlaceOrderInput) {
         checkoutId,
         part.items,
         part.fee,
-        round2(part.items + part.fee),
+        round2(part.items + part.fee + platformFee),
         JSON.stringify(input.address),
         input.address.latitude,
         input.address.longitude,
@@ -254,6 +283,7 @@ async function writeSplit(c: Db, slices: StoreSlice[], input: PlaceOrderInput) {
         crypto.randomInt(1000, 10000).toString(),
         RESERVATION_MINUTES,
         `${input.idempotencyKey}:${index + 1}`,
+        platformFee,
       ],
     );
     const id = inserted.rows[0]!.id;
@@ -298,72 +328,35 @@ export async function placeOrder(input: PlaceOrderInput) {
   let checkoutId: string | null = null;
   try {
     ({ orderId, grandTotal, checkoutId } = await withTransaction(async (c) => {
-      // Locks the store and its inventory, then re-checks under those locks: `rankStores` reads
-      // without locks, so the winner can go offline or sell out before we get here.
-      //
-      // Each probe runs inside a savepoint so that rejecting a candidate also releases its row
-      // locks. Without that, a store that merely ranked well would stay locked until commit,
-      // serialising unrelated checkouts and letting two carts that rank the same pair of stores in
-      // opposite orders (ranking follows the customer's coordinates) cross-lock into a deadlock.
-      const attempt = async (candidateId: string) => {
-        await c.query('savepoint candidate');
-        const discard = async () => {
-          await c.query('rollback to savepoint candidate');
-          await c.query('release savepoint candidate');
-        };
-
-        const storeResult = await c.query(
-          `select id, latitude, longitude, delivery_radius_km, avg_prep_minutes
-             from stores where id = $1 and status = 'approved' and is_online for share`,
-          [candidateId],
-        );
-        const store = storeResult.rows[0];
-        if (!store) {
-          await discard();
-          return { ok: false as const, reason: 'store_unavailable' as const };
-        }
-
-        const distanceKm = haversineKm(store.latitude, store.longitude, input.address.latitude, input.address.longitude);
-        if (distanceKm > store.delivery_radius_km) {
-          await discard();
-          return { ok: false as const, reason: 'out_of_range' as const };
-        }
-
-        const inventory = await c.query(
-          `select i.product_id, i.price, i.stock, i.is_listed, p.is_active, p.name, p.sku, p.image_url
-             from inventory i join products p on p.id = i.product_id
-            where i.store_id = $1 and i.product_id = any($2::uuid[])
-            order by i.product_id
-            for update of i`,
-          [candidateId, productIds],
-        );
-        const byId = new Map(inventory.rows.map((row) => [row.product_id as string, row]));
-        const stock = new Map(
-          [...byId].map(([id, row]) => [id, row.is_listed && row.is_active ? (row.stock as number) : 0]),
-        );
-        for (const [productId, quantity] of quantities) {
-          if ((stock.get(productId) ?? 0) < quantity) {
-            await discard();
-            return { ok: false as const, reason: 'stock' as const, storeId: candidateId, stock };
-          }
-        }
-
-        await c.query('release savepoint candidate');
-        return { ok: true as const, storeId: candidateId, store, distanceKm, byId };
-      };
-
-      let won: Extract<Awaited<ReturnType<typeof attempt>>, { ok: true }> | undefined;
-      let shortfall: Map<string, number> | undefined;
-
+      // Always fill from the nearest shops first, even when one farther shop could cover the
+      // whole cart. The customer bought the pooled stock; leftover units at a closer shop sell.
+      // A savepoint lets a lost race (stock sold, shop went offline, price changed) roll back and
+      // allocate again from the rows as they are now.
       const ranked = await rankStores(c, input.address.latitude, input.address.longitude, quantities);
       if (!ranked.length) throw unprocessable('unserviceable', 'No store delivers to your location yet');
 
-      const complete = ranked.filter((r) => r.coverable === quantities.size);
-      if (!complete.length) {
+      let placed: { orderId: string; grandTotal: number; checkoutId: string | null } | undefined;
+      let lastShort: { productId: string; available: number }[] = [];
+      const ATTEMPTS = 3;
+      for (let n = 0; n < ATTEMPTS && !placed; n++) {
         const alloc = await allocateNearest(c, input.address.latitude, input.address.longitude, quantities);
-        if (!alloc.short.length && alloc.slices.length > 0) {
-          return writeSplit(c, alloc.slices, input);
+        if (alloc.short.length || !alloc.slices.length) {
+          lastShort = alloc.short;
+          break;
         }
+        await c.query('savepoint split');
+        try {
+          placed = await writeSplit(c, alloc.slices, input);
+          await c.query('release savepoint split');
+        } catch (err) {
+          await c.query('rollback to savepoint split');
+          await c.query('release savepoint split');
+          const retryable = err instanceof HttpError && (err.status === 409 || err.code === 'store_unavailable');
+          if (!retryable || n === ATTEMPTS - 1) throw err;
+        }
+      }
+
+      if (!placed) {
         const nearby = await availabilityNearby(c, input.address.latitude, input.address.longitude, productIds);
         const best = ranked[0]!;
         const offered = await c.query<{ product_id: string; stock: number }>(
@@ -377,94 +370,29 @@ export async function placeOrder(input: PlaceOrderInput) {
           storeId: best.storeId,
           items: items.map((item) => ({
             ...item,
-            available: alloc.short.find((s) => s.productId === item.productId)?.available ?? item.availableNearby,
+            available: lastShort.find((s) => s.productId === item.productId)?.available ?? item.availableNearby,
           })),
         });
       }
-
-      // Walk the ranked candidates so one store selling out doesn't fail a serviceable cart.
-      let sawStockShortfall = false;
-      for (const candidate of complete) {
-        const tried = await attempt(candidate.storeId);
-        if (tried.ok) {
-          won = tried;
-          break;
-        }
-        if (tried.reason === 'stock') {
-          sawStockShortfall = true;
-          // Report against the best-ranked store that fell short, not whichever failed last.
-          shortfall ??= tried.stock;
-        }
-      }
-
-      if (!won) {
-        // Every candidate went offline or out of range between ranking and locking, so this is not
-        // a stock problem and naming items would be misleading.
-        if (!sawStockShortfall) {
-          throw unprocessable('store_unavailable', 'The stores near you just stopped taking orders. Please try again shortly.');
-        }
-        const nearby = await availabilityNearby(c, input.address.latitude, input.address.longitude, productIds);
-        const items = classifyShortfall(quantities, shortfall!, nearby);
-        throw conflict('Some items in your cart are no longer available', { items });
-      }
-
-      const { storeId, store, distanceKm, byId } = won;
-
-      const lines = productIds.map((productId) => ({ ...byId.get(productId)!, quantity: quantities.get(productId)! }));
-      const pricing = priceOrder(lines.map((l) => ({ unitPrice: l.price, quantity: l.quantity })), distanceKm);
-
-      await c.query(
-        `update inventory i set stock = i.stock - x.qty
-           from unnest($2::uuid[], $3::int[]) as x(product_id, qty)
-          where i.store_id = $1 and i.product_id = x.product_id`,
-        [storeId, productIds, productIds.map((id) => quantities.get(id))],
-      );
-
-      const inserted = await c.query<{ id: string }>(
-        `insert into orders (customer_id, store_id, items_total, delivery_fee, platform_fee, grand_total,
-                             delivery_address, delivery_lat, delivery_lng, distance_km, eta_minutes,
-                             handover_otp, reserved_until, idempotency_key)
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, now() + make_interval(mins => $13), $14)
-         on conflict (customer_id, idempotency_key) do nothing
-         returning id`,
-        [
-          input.customerId, storeId, pricing.itemsTotal, pricing.deliveryFee, pricing.platformFee,
-          pricing.grandTotal, JSON.stringify(input.address), input.address.latitude, input.address.longitude,
-          Math.round(distanceKm * 100) / 100, etaMinutes(store.avg_prep_minutes, distanceKm),
-          crypto.randomInt(1000, 10000).toString(), RESERVATION_MINUTES, input.idempotencyKey,
-        ],
-      );
-      const id = inserted.rows[0]?.id;
-      if (!id) throw new IdempotentReplay();
-
-      await c.query(
-        `insert into order_items (order_id, product_id, name, sku, image_url, unit_price, quantity, line_total)
-         select $1, x.product_id, x.name, x.sku, x.image_url, x.unit_price, x.quantity, x.unit_price * x.quantity
-           from unnest($2::uuid[], $3::text[], $4::text[], $5::text[], $6::numeric[], $7::int[])
-             as x(product_id, name, sku, image_url, unit_price, quantity)`,
-        [
-          id,
-          lines.map((l) => l.product_id),
-          lines.map((l) => l.name),
-          lines.map((l) => l.sku),
-          lines.map((l) => l.image_url),
-          lines.map((l) => l.price),
-          lines.map((l) => l.quantity),
-        ],
-      );
-      await recordStatus(c, id, null, 'pending_payment', { role: 'customer', uid: input.customerId });
-      return { orderId: id, grandTotal: pricing.grandTotal, checkoutId: null as string | null };
+      return placed;
     }));
   } catch (err) {
     if (err instanceof IdempotentReplay) {
       const replay = await pool.query<{ id: string }>(
-        'select id from orders where customer_id = $1 and idempotency_key = $2',
+        `select o.id from orders o
+           left join checkouts c on c.id = o.checkout_id
+          where o.customer_id = $1 and (o.idempotency_key = $2 or c.idempotency_key = $2)
+          order by o.created_at
+          limit 1`,
         [input.customerId, input.idempotencyKey],
       );
-      return checkoutPayload(replay.rows[0]!.id, input.customerId);
+      if (!replay.rows[0]) throw conflict('This checkout is already being processed. Please refresh your orders.');
+      return checkoutPayload(replay.rows[0].id, input.customerId);
     }
     throw err;
   }
+
+  void bumpCatalog();
 
   try {
     const amountPaise = toPaise(grandTotal);
@@ -635,22 +563,20 @@ export async function transitionOrder(input: TransitionInput, db?: pg.PoolClient
     );
     await recordStatus(c, order.id, from, input.to, actor, input.reason);
 
-    if (input.to === 'cancelled' && PAID_STATUSES.includes(from) && order.payment_status === 'captured') {
-      const others = order.checkout_id
-        ? await c.query<{ n: number }>(
-            `select count(*)::int as n from orders
-              where checkout_id = $1 and id <> $2 and status not in ('cancelled', 'expired')`,
-            [order.checkout_id, order.id],
-          )
-        : { rows: [{ n: 0 }] };
-      const partial = (others.rows[0]?.n ?? 0) > 0;
-      if (!partial) await c.query(`update payments set status = 'refund_pending' where id = $1`, [order.payment_id]);
+    // Each order refunds exactly what it was charged. For a split checkout the platform fee sits on
+    // the first delivery, so the parts add up to the payment and the worker's ledger stops a
+    // second delivery from refunding the whole payment again.
+    if (
+      input.to === 'cancelled' &&
+      PAID_STATUSES.includes(from) &&
+      (order.payment_status === 'captured' || order.payment_status === 'refund_pending')
+    ) {
+      await c.query(`update payments set status = 'refund_pending' where id = $1 and status = 'captured'`, [order.payment_id]);
       await enqueue(c, 'refund.requested', {
         paymentId: order.payment_id,
         orderId: order.id,
         providerPaymentId: order.provider_payment_id,
-        amountPaise: partial ? toPaise(Number(order.grand_total)) : order.amount_paise,
-        partial,
+        amountPaise: toPaise(Number(order.grand_total)),
       });
     }
     await enqueue(c, 'order.status_changed', { orderId: order.id, from, to: input.to });
@@ -658,10 +584,11 @@ export async function transitionOrder(input: TransitionInput, db?: pg.PoolClient
   };
 
   const orderId = db ? await run(db) : await withTransaction(run);
+  if (input.to === 'cancelled' || input.to === 'expired') void bumpCatalog();
   return getOrder(db ?? pool, orderId, input.actor);
 }
 
-export async function expireReservations(batchSize = 50): Promise<number> {
+async function expireReservationsInTx(batchSize = 50): Promise<number> {
   return withTransaction(async (c) => {
     const due = await c.query<{ id: string }>(
       `select id from orders
@@ -690,4 +617,10 @@ export async function expireReservations(batchSize = 50): Promise<number> {
     }
     return rows.length;
   });
+}
+
+export async function expireReservations(batchSize = 50): Promise<number> {
+  const expired = await expireReservationsInTx(batchSize);
+  if (expired) void bumpCatalog();
+  return expired;
 }

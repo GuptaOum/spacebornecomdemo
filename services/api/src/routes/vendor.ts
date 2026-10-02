@@ -16,7 +16,7 @@ import {
 import { pool } from '../db/pool.js';
 import { badRequest, conflict, forbidden, notFound, parse, unprocessable } from '../errors.js';
 import { listStoreOrders, transitionOrder } from '../orders/service.js';
-import { ORDER_STATUSES } from '../orders/status.js';
+import { HOLDS_STOCK, ORDER_STATUSES } from '../orders/status.js';
 import { getJob, getJobFile, listStoreJobs, quoteJob, transitionJob } from '../fabrication/service.js';
 import { SERVICE_KINDS } from '../fabrication/status.js';
 import { LISTING_COLUMNS, streamFile } from './fabrication.js';
@@ -117,6 +117,9 @@ vendorRouter.patch('/store', requireApprovedStore, async (req, res) => {
       where id = $1 returning ${STORE_COLUMNS}`,
     [storeId(req), body.isOnline ?? null, body.deliveryRadiusKm ?? null, body.prepMinutes ?? null, body.phone ?? null],
   );
+  // Going offline or shrinking the radius removes this shop's stock from the pooled catalog now,
+  // not when the cache happens to expire.
+  if (body.isOnline !== undefined || body.deliveryRadiusKm !== undefined || body.prepMinutes !== undefined) await bumpCatalog();
   res.json({ store: rows[0] });
 });
 
@@ -146,7 +149,11 @@ vendorRouter.get('/inventory', requireApprovedStore, async (req, res) => {
             (select coalesce(sum(oi.quantity), 0)::int
                from order_items oi join orders o on o.id = oi.order_id
               where oi.product_id = i.product_id and o.store_id = i.store_id
-                and o.status not in ('pending_payment', 'cancelled', 'expired')) as "unitsSold"
+                and o.status not in ('pending_payment', 'cancelled', 'expired')) as "unitsSold",
+            (select coalesce(sum(oi.quantity), 0)::int
+               from order_items oi join orders o on o.id = oi.order_id
+              where oi.product_id = i.product_id and o.store_id = i.store_id
+                and o.status = 'pending_payment') as "unitsHeld"
        from inventory i join products p on p.id = i.product_id
       where i.store_id = $1 and ($2::text is null or p.name ilike $2 or p.sku ilike $2)
       order by i.stock asc, p.name
@@ -177,6 +184,8 @@ const inventoryBody = z
   .object({
     price: z.number().positive().max(1_000_000).optional(),
     stock: z.number().int().min(0).max(100_000).optional(),
+    /** Required with an absolute `stock` on an existing row: the count the vendor was looking at. */
+    expectedStock: z.number().int().min(0).max(100_000).optional(),
     stockDelta: z.number().int().min(-100_000).max(100_000).optional(),
     isListed: z.boolean().optional(),
   })
@@ -192,15 +201,19 @@ vendorRouter.put('/inventory/:productId', requireApprovedStore, async (req, res)
     throw unprocessable('price_above_mrp', `Price cannot exceed the MRP of ₹${product.rows[0].mrp}`);
   }
 
-  const existing = await pool.query('select 1 from inventory where store_id = $1 and product_id = $2', [storeId(req), productId]);
+  const existing = await pool.query<{ stock: number }>('select stock from inventory where store_id = $1 and product_id = $2', [storeId(req), productId]);
   if (!existing.rows[0] && (body.price === undefined || body.stock === undefined)) {
     throw unprocessable('price_and_stock_required', 'Price and stock are required when listing a new product');
+  }
+  if (existing.rows[0] && body.stock !== undefined && body.expectedStock === undefined) {
+    throw unprocessable('expected_stock_required', 'Send expectedStock with stock, or use stockDelta, so a sale in between is not overwritten');
   }
 
   // Postgres validates NOT NULL on the proposed row before it checks ON CONFLICT, so a plain
   // upsert fails whenever price is omitted. Update existing rows and insert only new ones.
-  // stock uses a delta so concurrent orders reducing stock are not overwritten.
-  const params = [storeId(req), productId, body.price ?? null, body.stock ?? null, body.stockDelta ?? null, body.isListed ?? null];
+  // stock uses a delta, or an absolute value guarded by the count the vendor saw, so an order
+  // that reduced stock a moment ago is never silently put back on the shelf.
+  const params = [storeId(req), productId, body.price ?? null, body.stock ?? null, body.stockDelta ?? null, body.isListed ?? null, body.expectedStock ?? null];
   const { rows } = existing.rows[0]
     ? await pool.query(
         `update inventory set
@@ -210,6 +223,7 @@ vendorRouter.put('/inventory/:productId', requireApprovedStore, async (req, res)
                         else stock end,
            is_listed = coalesce($6, is_listed)
          where store_id = $1 and product_id = $2
+           and ($4::int is null or stock = $7::int)
          returning product_id as "productId", price, stock, is_listed as "isListed"`,
         params,
       )
@@ -221,13 +235,34 @@ vendorRouter.put('/inventory/:productId', requireApprovedStore, async (req, res)
          returning product_id as "productId", price, stock, is_listed as "isListed"`,
         [storeId(req), productId, body.price, body.stock, body.isListed ?? true],
       );
-  if (!rows[0]) throw notFound('Inventory item not found');
+  if (!rows[0]) {
+    if (existing.rows[0]) {
+      throw conflict('Stock changed while you were editing. Refresh and try again.', {
+        code: 'stock_changed',
+        currentStock: existing.rows[0].stock,
+      });
+    }
+    throw notFound('Inventory item not found');
+  }
   await bumpCatalog();
   res.json({ item: { ...rows[0], price: Number(rows[0].price) } });
 });
 
 vendorRouter.delete('/inventory/:productId', requireApprovedStore, async (req, res) => {
   const productId = parse(uuid, req.params.productId);
+  // Open orders still hold units of this row; deleting it would lose them when the order is
+  // cancelled and the units try to come back. Unlisting keeps the row and hides it from customers.
+  const held = await pool.query<{ n: number }>(
+    `select count(*)::int as n from order_items oi join orders o on o.id = oi.order_id
+      where o.store_id = $1 and oi.product_id = $2 and o.status = any($3::order_status[])`,
+    [storeId(req), productId, HOLDS_STOCK],
+  );
+  if ((held.rows[0]?.n ?? 0) > 0) {
+    throw conflict('Open orders still include this item. Unlist it instead, and remove it once they are delivered.', {
+      code: 'item_in_open_orders',
+      openOrders: held.rows[0]!.n,
+    });
+  }
   const { rowCount } = await pool.query(
     'delete from inventory where store_id = $1 and product_id = $2',
     [storeId(req), productId],

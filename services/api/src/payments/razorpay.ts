@@ -22,11 +22,16 @@ export async function createProviderOrder(orderId: string, amountPaise: number) 
 /**
  * The SDK cannot attach an Idempotency-Key header, and the worker calls this before it can durably
  * record success, so a timeout after Razorpay accepted the refund would refund again on retry.
- * Ask Razorpay what it already has for this payment first.
+ * Ask Razorpay what it already has for this payment first. One payment can carry several refunds
+ * (one per delivery of a split checkout) and two deliveries can cost the same, so the match is the
+ * order or job reference written into the refund notes, never the amount.
  */
-export async function refundPayment(paymentId: string, amountPaise: number, orderId: string) {
+export async function refundPayment(paymentId: string, amountPaise: number, reference: string) {
   const existing = await razorpay().payments.fetchMultipleRefund(paymentId);
-  const already = existing?.items?.find((r) => Number(r.amount) === amountPaise);
+  const already = existing?.items?.find((r) => {
+    const notes = (r as { notes?: Record<string, unknown> }).notes;
+    return notes?.reference === reference || notes?.orderId === reference;
+  });
   if (already) return already;
-  return razorpay().payments.refund(paymentId, { amount: amountPaise, notes: { orderId } });
+  return razorpay().payments.refund(paymentId, { amount: amountPaise, notes: { reference, orderId: reference } });
 }

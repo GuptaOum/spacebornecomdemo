@@ -74,7 +74,9 @@ const vendorPune = () => `seed-vendor-pune:vendor:${puneStore}`;
 describe('anonymous access', () => {
   it('can browse the catalog but nothing else', async () => {
     expect((await call(null, 'GET', `/v1/stores/nearby?lat=${KORAMANGALA.latitude}&lng=${KORAMANGALA.longitude}`)).status).toBe(200);
-    expect((await call(null, 'GET', `/v1/stores/${bengaluruStore}/products`)).status).toBe(200);
+    expect((await call(null, 'GET', `/v1/catalog/products?lat=${KORAMANGALA.latitude}&lng=${KORAMANGALA.longitude}`)).status).toBe(200);
+    // The shop behind a listing is not public.
+    expect((await call(null, 'GET', `/v1/stores/${bengaluruStore}/products`)).status).toBe(404);
     expect((await call(null, 'GET', '/v1/orders')).status).toBe(401);
     expect((await call(null, 'GET', '/v1/me')).status).toBe(401);
     expect((await call(null, 'GET', '/v1/vendor/inventory')).status).toBe(401);

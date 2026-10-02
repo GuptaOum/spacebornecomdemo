@@ -47,10 +47,10 @@ const NEARBY_CTE = `
   )`;
 
 // One row per product: the best offer among nearby stores (in stock first, then nearest, then cheapest).
+// The shop itself is never named to the customer; only its distance and prep time shape the ETA.
 const bestOfferSelect = (extra: { columns?: string; joins?: string } = {}) => `
   select distinct on (p.id)
          ${PRODUCT_COLUMNS},${extra.columns ? `\n         ${extra.columns},` : ''}
-         n.id as "storeId", n.name as "storeName", n.city as "storeCity",
          round(n.km::numeric, 1)::float as "distanceKm", n.avg_prep_minutes as "prepMinutes",
          (select coalesce(sum(i2.stock), 0)::int from inventory i2 join nearby n2 on n2.id = i2.store_id
            where i2.product_id = p.id and i2.is_listed and i2.stock > 0) as "nearbyStock",
@@ -101,11 +101,12 @@ catalogRouter.get('/catalog/products', async (req, res) => {
     req.query,
   );
   const rawQuery = q.q?.trim() || null;
-  // Search embeddings change per query, so only the plain browse is cached. Stock edits bump the
-  // generation, and the TTL covers stock that moved because an order was placed.
+  // Search embeddings change per query, so only the plain browse is cached. Stock edits, orders and
+  // store changes bump the generation; the TTL is only a backstop. Three decimals is about 110 m,
+  // close enough that two customers sharing a page also share the same set of nearby shops.
   const cacheKey = rawQuery
     ? null
-    : `products:${await catalogGeneration()}:${q.lat.toFixed(2)}:${q.lng.toFixed(2)}:${q.category ?? ''}:${q.limit}:${q.offset}`;
+    : `products:${await catalogGeneration()}:${q.lat.toFixed(3)}:${q.lng.toFixed(3)}:${q.category ?? ''}:${q.limit}:${q.offset}`;
   if (cacheKey) {
     const hit = await cacheGet<Record<string, unknown>>(cacheKey);
     if (hit) {
@@ -166,10 +167,11 @@ catalogRouter.get('/catalog/products/:productId', async (req, res) => {
     [q.lat, q.lng, productId],
   );
   if (!rows[0]) throw notFound('This product is not available near you');
+  // Anonymous per-shop offers: price, stock and ETA only, so the page can explain a spill-over
+  // price without ever naming the shop.
   const offers = await pool.query(
     `with ${NEARBY_CTE}
-     select n.name as "storeName", n.city, round(n.km::numeric, 1)::float as "distanceKm", i.price, i.stock,
-            n.avg_prep_minutes as "prepMinutes"
+     select round(n.km::numeric, 1)::float as "distanceKm", i.price, i.stock, n.avg_prep_minutes as "prepMinutes"
        from inventory i join nearby n on n.id = i.store_id
       where i.product_id = $3 and i.is_listed
       order by (i.stock > 0) desc, n.km asc`,
@@ -190,20 +192,24 @@ catalogRouter.post('/catalog/resolve', async (req, res) => {
   );
   const quantities = new Map<string, number>();
   for (const { productId, quantity } of body.items) quantities.set(productId, (quantities.get(productId) ?? 0) + quantity);
-  res.json(await resolveCart(pool, body.lat, body.lng, quantities));
+  const resolution = await resolveCart(pool, body.lat, body.lng, quantities);
+  res.json({
+    ...resolution,
+    store: resolution.store ? { distanceKm: resolution.store.distanceKm, etaMinutes: resolution.store.etaMinutes } : null,
+  });
 });
 
 catalogRouter.get('/stores/nearby', async (req, res) => {
   const q = parse(z.object({ lat: latitude, lng: longitude }), req.query);
-  const cacheKey = `nearby:${await catalogGeneration()}:${q.lat.toFixed(2)}:${q.lng.toFixed(2)}`;
+  const cacheKey = `nearby:${await catalogGeneration()}:${q.lat.toFixed(3)}:${q.lng.toFixed(3)}`;
   const hit = await cacheGet<Record<string, unknown>>(cacheKey);
   if (hit) {
     res.json(hit);
     return;
   }
+  // Service coverage only: how many shops reach this point and how fast. No names or addresses.
   const { rows } = await pool.query(
-    `select s.id, s.name, s.city, s.address_line as "addressLine", s.avg_prep_minutes as "prepMinutes",
-            s.delivery_radius_km as "deliveryRadiusKm", d.km as "distanceKm"
+    `select s.avg_prep_minutes as "prepMinutes", d.km as "distanceKm"
        from stores s
        cross join lateral (select ${distanceSql('$1', '$2')} as km) d
       where s.status = 'approved' and s.is_online
@@ -223,51 +229,5 @@ catalogRouter.get('/stores/nearby', async (req, res) => {
   res.json(body);
 });
 
-async function loadStore(storeId: string) {
-  const { rows } = await pool.query(
-    `select id, name, city, is_online as "isOnline", avg_prep_minutes as "prepMinutes"
-       from stores where id = $1 and status = 'approved'`,
-    [storeId],
-  );
-  if (!rows[0]) throw notFound('Store not found');
-  return rows[0];
-}
-
-catalogRouter.get('/stores/:storeId/products', async (req, res) => {
-  const storeId = parse(uuid, req.params.storeId);
-  const q = parse(
-    pagination.extend({ category: z.string().max(60).optional(), q: z.string().trim().max(80).optional() }),
-    req.query,
-  );
-  const store = await loadStore(storeId);
-  const search = q.q ? `%${escapeLike(q.q)}%` : null;
-  const { rows } = await pool.query(
-    `select ${PRODUCT_COLUMNS}
-       from inventory i
-       join products p on p.id = i.product_id
-       join categories c on c.id = p.category_id
-      where i.store_id = $1 and i.is_listed and p.is_active
-        and ($2::text is null or p.category_id = $2)
-        and ($3::text is null or p.name ilike $3 or p.sku ilike $3 or p.brand ilike $3)
-      order by (i.stock > 0) desc, p.name
-      limit $4 offset $5`,
-    [storeId, q.category ?? null, search, q.limit, q.offset],
-  );
-  res.json({ store, products: rows });
-});
-
-catalogRouter.get('/stores/:storeId/products/:productId', async (req, res) => {
-  const storeId = parse(uuid, req.params.storeId);
-  const productId = parse(uuid, req.params.productId);
-  const store = await loadStore(storeId);
-  const { rows } = await pool.query(
-    `select ${PRODUCT_COLUMNS}
-       from inventory i
-       join products p on p.id = i.product_id
-       join categories c on c.id = p.category_id
-      where i.store_id = $1 and i.product_id = $2 and i.is_listed and p.is_active`,
-    [storeId, productId],
-  );
-  if (!rows[0]) throw notFound('This product is not available at this store');
-  res.json({ store, product: rows[0] });
-});
+// There is deliberately no per-store shelf endpoint: customers browse one pooled catalog and the
+// shop behind a listing is not public. Vendors see their own shelf under /vendor, admins under /admin.
