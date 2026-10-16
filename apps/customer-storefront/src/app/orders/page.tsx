@@ -467,7 +467,7 @@ function OrderCard({
           </h4>
           <div className="divide-y divide-[#f9bf8f]/30">
             {order.items.map((item) => {
-              const isDeliveredOrBought = order.status !== 'cancelled' && order.status !== 'expired' && order.status !== 'pending_payment';
+              const isDelivered = order.status === 'delivered';
               const reviewed = reviewedItems[item.productId];
               const isReviewing = reviewingItemId === item.productId;
 
@@ -512,8 +512,8 @@ function OrderCard({
                         {formatInr(item.lineTotal)}
                       </span>
 
-                      {/* Direct Verified Rate & Review Button */}
-                      {isDeliveredOrBought && (
+                      {/* Direct Verified Rate & Review Button - only on delivered orders */}
+                      {isDelivered && (
                         <div>
                           {reviewed ? (
                             <button
@@ -590,9 +590,16 @@ function OrderCard({
           </div>
           <div className="flex items-center justify-between text-[11px] pt-1">
             <span className="text-[#7a6274]">
-              Payment Status: <b className="text-[#34222e] uppercase">{order.paymentStatus?.replace('_', ' ') || 'CONFIRMED'}</b>
+              Payment Status:{' '}
+              <b className="text-[#34222e] uppercase">
+                {order.status === 'cancelled' || order.status === 'expired' || order.status === 'pending_payment'
+                  ? 'Cancelled (Not Charged)'
+                  : order.paymentStatus?.replace('_', ' ') || 'Paid'}
+              </b>
             </span>
-            <span className="text-[#0c831f] font-semibold">✓ GST Compliant Invoice</span>
+            {order.status === 'delivered' && (
+              <span className="text-[#0c831f] font-semibold">✓ GST Compliant Invoice</span>
+            )}
           </div>
           {order.cancelReason && (
             <p className="p-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 font-medium">
@@ -604,13 +611,16 @@ function OrderCard({
         {/* Action Bar */}
         <div className="pt-2 flex flex-wrap items-center justify-between gap-2 border-t border-[#f9bf8f]/40">
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowInvoiceModal(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#f9bf8f]/70 bg-white hover:bg-[#fee9d7]/40 text-xs font-semibold text-[#34222e] cursor-pointer transition shadow-2xs"
-            >
-              <Printer className="w-3.5 h-3.5 text-[#7a6274]" />
-              <span>View Receipt</span>
-            </button>
+            {/* View Receipt - strictly only for delivered orders, NEVER for cancelled orders */}
+            {order.status === 'delivered' && (
+              <button
+                onClick={() => setShowInvoiceModal(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#f9bf8f]/70 bg-white hover:bg-[#fee9d7]/40 text-xs font-semibold text-[#34222e] cursor-pointer transition shadow-2xs"
+              >
+                <Printer className="w-3.5 h-3.5 text-[#7a6274]" />
+                <span>View Receipt</span>
+              </button>
+            )}
 
             {isTerminal && (
               <button
