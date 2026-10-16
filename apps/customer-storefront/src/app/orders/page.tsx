@@ -63,54 +63,28 @@ function groupOrders(orders: Order[]) {
 }
 
 function getStatusTheme(status: OrderStatus) {
-  switch (status) {
-    case 'delivered':
-      return {
-        badgeBg: 'bg-emerald-50 text-emerald-800 border-emerald-200/80',
-        icon: CheckCircle2,
-        label: 'Delivered',
-        dot: 'bg-emerald-500',
-      };
-    case 'out_for_delivery':
-      return {
-        badgeBg: 'bg-blue-50 text-blue-800 border-blue-200/80',
-        icon: Truck,
-        label: 'Out for Delivery',
-        dot: 'bg-blue-500 animate-pulse',
-      };
-    case 'packing':
-    case 'ready_for_pickup':
-      return {
-        badgeBg: 'bg-amber-50 text-amber-800 border-amber-200/80',
-        icon: Package,
-        label: status === 'packing' ? 'Packing Order' : 'Ready for Courier',
-        dot: 'bg-amber-500',
-      };
-    case 'placed':
-    case 'accepted':
-      return {
-        badgeBg: 'bg-orange-50 text-orange-800 border-orange-200/80',
-        icon: Clock,
-        label: status === 'accepted' ? 'Order Accepted' : 'Order Placed',
-        dot: 'bg-orange-500',
-      };
-    case 'cancelled':
-    case 'expired':
-      return {
-        badgeBg: 'bg-rose-50 text-rose-800 border-rose-200/80',
-        icon: AlertCircle,
-        label: status === 'cancelled' ? 'Cancelled' : 'Expired',
-        dot: 'bg-rose-500',
-      };
-    case 'pending_payment':
-    default:
-      return {
-        badgeBg: 'bg-gray-100 text-gray-800 border-gray-200',
-        icon: Clock,
-        label: 'Pending Payment',
-        dot: 'bg-gray-400',
-      };
+  if (status === 'delivered') {
+    return {
+      badgeBg: 'bg-emerald-50 text-emerald-800 border-emerald-200/80',
+      icon: CheckCircle2,
+      label: 'Delivered',
+      dot: 'bg-emerald-500',
+    };
   }
+  if (status === 'cancelled' || status === 'expired' || status === 'pending_payment') {
+    return {
+      badgeBg: 'bg-rose-50 text-rose-800 border-rose-200/80',
+      icon: AlertCircle,
+      label: 'Cancelled',
+      dot: 'bg-rose-500',
+    };
+  }
+  return {
+    badgeBg: 'bg-blue-50 text-blue-800 border-blue-200/80',
+    icon: Truck,
+    label: 'In Transit',
+    dot: 'bg-blue-500 animate-pulse',
+  };
 }
 
 // Inline Item Review Form
@@ -376,19 +350,19 @@ function OrderCard({
       </div>
 
       <div className="p-4 sm:p-5 space-y-5">
-        {/* Visual Progress Stepper for Active & Delivered Orders */}
-        {order.status !== 'cancelled' && order.status !== 'expired' && (
+        {/* Visual Progress Stepper for In-Transit & Delivered Orders */}
+        {order.status !== 'cancelled' && order.status !== 'expired' && order.status !== 'pending_payment' ? (
           <div className="p-3.5 sm:p-4 rounded-xl bg-[#fffbf7] border border-[#f9bf8f]/40 space-y-3">
             <div className="flex items-center justify-between text-xs font-semibold text-[#7a6274]">
               <span className="flex items-center gap-1.5 text-[#34222e] font-bold">
-                <Sparkles className="w-3.5 h-3.5 text-[#0c831f]" />
-                <span>Delivery Telemetry</span>
+                <Truck className="w-3.5 h-3.5 text-[#0c831f]" />
+                <span>Delivery Tracking</span>
               </span>
               {order.status === 'delivered' ? (
-                <span className="text-[#0c831f] font-bold">✓ Completed & Handed Over</span>
+                <span className="text-[#0c831f] font-bold">✓ Delivered</span>
               ) : (
                 <span className="text-[#0c831f] font-bold">
-                  ⚡ Estimated Delivery: ~{order.etaMinutes} mins from dark store
+                  ⚡ In Transit (~{order.etaMinutes} mins)
                 </span>
               )}
             </div>
@@ -432,6 +406,19 @@ function OrderCard({
                 />
               </div>
             </div>
+          </div>
+        ) : (
+          <div className="p-3.5 sm:p-4 rounded-xl bg-rose-50/70 border border-rose-200/60 text-xs text-rose-800 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+              <span>This order is cancelled. No payment was charged.</span>
+            </div>
+            <button
+              onClick={handleReorder}
+              className="text-xs font-bold text-[#0c831f] hover:underline cursor-pointer shrink-0"
+            >
+              Reorder items →
+            </button>
           </div>
         )}
 
@@ -740,7 +727,6 @@ export default function OrdersPage() {
   const { user, loading } = useAuth();
   const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'delivered' | 'cancelled'>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [refreshing, setRefreshing] = useState(false);
 
   const orders = useLoad(
     () => (user ? api<{ orders: Order[] }>('/orders').then((r) => r.orders) : Promise.resolve([] as Order[])),
@@ -758,12 +744,6 @@ export default function OrdersPage() {
     return () => clearInterval(timer);
   }, [hasActive, orders.reload]);
 
-  const handleManualRefresh = async () => {
-    setRefreshing(true);
-    await orders.reload();
-    setTimeout(() => setRefreshing(false), 500);
-  };
-
   // Filter & Search Logic
   const filteredOrders = useMemo(() => {
     if (!orders.data) return [];
@@ -774,7 +754,7 @@ export default function OrdersPage() {
     } else if (activeFilter === 'delivered') {
       list = list.filter((o) => o.status === 'delivered');
     } else if (activeFilter === 'cancelled') {
-      list = list.filter((o) => o.status === 'cancelled' || o.status === 'expired');
+      list = list.filter((o) => ['cancelled', 'expired', 'pending_payment'].includes(o.status));
     }
 
     if (searchQuery.trim()) {
@@ -795,7 +775,7 @@ export default function OrdersPage() {
     const all = orders.data?.length || 0;
     const active = orders.data?.filter((o) => ACTIVE_STATUSES.includes(o.status)).length || 0;
     const delivered = orders.data?.filter((o) => o.status === 'delivered').length || 0;
-    const cancelled = orders.data?.filter((o) => o.status === 'cancelled' || o.status === 'expired').length || 0;
+    const cancelled = orders.data?.filter((o) => ['cancelled', 'expired', 'pending_payment'].includes(o.status)).length || 0;
     return { all, active, delivered, cancelled };
   }, [orders.data]);
 
@@ -835,7 +815,7 @@ export default function OrdersPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-[#f9bf8f]/40">
         <div>
           <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl font-black text-[#34222e] tracking-tight">Order History & Telemetry</h1>
+            <h1 className="text-2xl font-black text-[#34222e] tracking-tight">My Orders</h1>
             {hasActive && (
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#f2fcf4] text-[#0c831f] border border-[#0c831f]/20">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#0c831f] animate-ping" />
@@ -844,18 +824,9 @@ export default function OrdersPage() {
             )}
           </div>
           <p className="text-xs text-[#7a6274] mt-1">
-            Real-time delivery progress, handover OTPs, component bench reviews, and invoices.
+            Track your deliveries, view security handover OTPs, review purchased components, and download receipts.
           </p>
         </div>
-
-        <button
-          onClick={handleManualRefresh}
-          disabled={refreshing}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-[#f9bf8f]/60 bg-[#fffbf7] hover:bg-[#fee9d7]/50 text-xs font-bold text-[#34222e] cursor-pointer transition shadow-xs self-start sm:self-auto"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 text-[#0c831f] ${refreshing ? 'animate-spin' : ''}`} />
-          <span>{refreshing ? 'Updating…' : 'Refresh Telemetry'}</span>
-        </button>
       </div>
 
       {/* Filter Tabs & Search Bar */}
