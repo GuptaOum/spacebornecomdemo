@@ -101,7 +101,7 @@ For complete details on AWS infrastructure and authentication across all roles, 
 - Zero-downtime rolling cloud deployment via AWS CodeBuild & ECS Fargate.
 - Dual-port Public ALB (Port 80 Storefront, Port 8080 Vendor Hub) + Air-gapped Internal Admin ALB via SSM tunnel.
 - 1-Click teardown scripts: `down.sh` (Bash) and `down.ps1` (PowerShell).
-- Decoupled Admin authorization with developer whitelist fallback (`oumgupta555@gmail.com`).
+- Decoupled Admin authorization with developer whitelist fallback (`ADMIN_EMAILS`).
 3. Fill real values: `aws_account_id`, `aws_profile`, `domain_name`, `acm_certificate_arn`,
    `firebase_project_id`, `admin_allowed_cidrs`. See `terraform/terraform.tfvars.example`.
 4. Put the app secret JSON into Secrets Manager (`FIREBASE_SERVICE_ACCOUNT_JSON`, `RAZORPAY_*`).

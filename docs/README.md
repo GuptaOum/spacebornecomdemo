@@ -48,5 +48,5 @@ Welcome to the **Spaceborn Documentation Hub**. This directory contains the comp
 | Role | Production Entry Point | Login Method | Authorized Email |
 | :--- | :--- | :--- | :--- |
 | **Customer** | `https://d2w4nxdybzrkls.cloudfront.net` | Google Sign-In | Any Google account |
-| **Vendor** | Public ALB Port `8080` | Google / Email | `oumgupta555+vendor@gmail.com` *(use alias)* |
-| **Admin** | `http://localhost:8080` *(via SSM tunnel)* | Google Sign-In | `oumgupta555@gmail.com` *(Hardcoded Admin)* |
+| **Vendor** | Public ALB Port `8080` | Google / Email | Merchant Account |
+| **Admin** | `http://localhost:8080` *(via SSM tunnel)* | Google Sign-In | Configured via `ADMIN_EMAILS` |
