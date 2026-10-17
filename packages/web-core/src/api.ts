@@ -49,6 +49,75 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
 
 export const newIdempotencyKey = () => crypto.randomUUID().replace(/-/g, '');
 
+export interface ServerEvent<T> {
+  event: string;
+  data: T;
+}
+
+/** POSTs JSON and yields each server-sent event's parsed `data:` payload as it arrives. */
+export async function* streamEvents<T>(path: string, body: unknown, signal: AbortSignal): AsyncGenerator<T> {
+  for await (const frame of streamServerEvents<T>(path, { method: 'POST', body }, signal)) yield frame.data;
+}
+
+export async function* streamServerEvents<T>(
+  path: string,
+  options: { method?: 'GET' | 'POST'; body?: unknown },
+  signal: AbortSignal,
+): AsyncGenerator<ServerEvent<T>> {
+  let res: Response;
+  try {
+    const headers: Record<string, string> = { ...(await authHeader()), Accept: 'text/event-stream' };
+    if (options.body !== undefined) headers['Content-Type'] = 'application/json';
+    res = await fetch(`/v1${path}`, {
+      method: options.method ?? 'GET',
+      headers,
+      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      signal,
+    });
+  } catch {
+    if (signal.aborted) return;
+    throw new ApiError(0, 'network', 'Could not reach Spaceborn. Check your connection and try again.');
+  }
+  if (!res.ok || !res.body) {
+    const payload = await res.json().catch(() => null);
+    const error = payload?.error;
+    throw new ApiError(res.status, error?.code ?? 'unknown', error?.message ?? `Request failed (${res.status})`, error?.details);
+  }
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let end: number;
+      while ((end = buffer.indexOf('\n\n')) !== -1) {
+        const frame = buffer.slice(0, end);
+        buffer = buffer.slice(end + 2);
+        const lines = frame.split('\n');
+        const data = lines
+          .filter((line) => line.startsWith('data:'))
+          .map((line) => line.slice(5).trimStart())
+          .join('\n');
+        if (!data) continue;
+        const named = lines.find((line) => line.startsWith('event:'));
+        const event = named ? named.slice(6).trim() || 'message' : 'message';
+        try {
+          yield { event, data: JSON.parse(data) as T };
+        } catch {
+          // A malformed frame is skipped rather than ending the whole answer.
+        }
+      }
+    }
+  } catch {
+    if (signal.aborted) return;
+    throw new ApiError(0, 'network', 'The connection dropped. Please try again.');
+  } finally {
+    await reader.cancel().catch(() => undefined);
+  }
+}
+
 async function authHeader(): Promise<Record<string, string>> {
   const token = await firebaseAuth().currentUser?.getIdToken();
   return token ? { Authorization: `Bearer ${token}` } : {};

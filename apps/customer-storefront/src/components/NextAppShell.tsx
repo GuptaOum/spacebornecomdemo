@@ -8,6 +8,7 @@ import { Footer } from './Footer';
 import { CartDrawer } from './CartDrawer';
 import { QuickViewModal } from './QuickViewModal';
 import { StickyCartDock } from './StickyCartDock';
+import { ChatCopilot } from './ChatCopilot';
 import { AppView, Product } from '../types';
 
 export const NextAppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -183,6 +184,8 @@ export const NextAppShell: React.FC<{ children: React.ReactNode }> = ({ children
         onOpenCart={openCart}
         currentView={currentView}
       />
+
+      <ChatCopilot />
     </div>
   );
 };

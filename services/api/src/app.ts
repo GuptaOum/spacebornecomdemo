@@ -4,6 +4,7 @@ import { config } from './config.js';
 import { pool } from './db/pool.js';
 import { errorHandler, forbidden, notFound } from './errors.js';
 import { adminRouter } from './routes/admin.js';
+import { aiRouter } from './routes/ai.js';
 import { catalogRouter } from './routes/catalog.js';
 import { fabricationRouter } from './routes/fabrication.js';
 import { geoRouter } from './routes/geo.js';
@@ -60,6 +61,7 @@ export function createApp() {
   // Mounted before the JSON parser: the webhook needs the raw body for signature checks.
   v1.use(paymentsRouter);
   v1.use(express.json({ limit: '100kb' }));
+  v1.use(aiRouter);
   v1.use('/me', meRouter);
   v1.use('/orders', ordersRouter);
   v1.use('/vendor', vendorRouter);
