@@ -11,7 +11,8 @@
     "./sign-in": "./src/SignInPanel.tsx",
     "./use-load": "./src/useLoad.ts",
     "./use-draft": "./src/useDraft.ts",
-    "./feedback": "./src/feedback.tsx"
+    "./feedback": "./src/feedback.tsx",
+    "./storefront": "./src/storefront.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",

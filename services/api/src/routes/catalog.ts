@@ -9,6 +9,7 @@ import { embedQuery } from '../catalog/search.js';
 import { pipeImage } from '../catalog/submissions.js';
 import { distanceSql } from '../lib/geo.js';
 import { storage } from '../storage.js';
+import { listCategories, liveSettings } from '../storefront/service.js';
 import { LAT_WINDOW, resolveCart } from '../orders/fulfilment.js';
 import { etaMinutes, MAX_ITEMS_PER_LINE } from '../orders/pricing.js';
 import { escapeLike, latitude, longitude, pagination, uuid } from './schemas.js';
@@ -89,6 +90,24 @@ const SEARCH_COLUMNS = `
 const withEta = (row: Record<string, unknown>) => ({
   ...row,
   etaMinutes: etaMinutes(row.prepMinutes as number, row.distanceKm as number),
+});
+
+/** Everything the storefront needs to lay itself out: the published look and the visible shelf. */
+catalogRouter.get('/storefront', async (_req, res) => {
+  const key = `storefront:${await catalogGeneration()}`;
+  const hit = await cacheGet<Record<string, unknown>>(key);
+  if (hit) {
+    res.json(hit);
+    return;
+  }
+  const [{ settings, version }, categories] = await Promise.all([liveSettings(), listCategories(pool, { visibleOnly: true })]);
+  const body = {
+    settings,
+    version: version?.id ?? null,
+    categories: categories.map(({ id, name, icon, description }) => ({ id, name, icon, description })),
+  };
+  await cacheSet(key, body, 300);
+  res.json(body);
 });
 
 catalogRouter.get('/catalog/products', async (req, res) => {

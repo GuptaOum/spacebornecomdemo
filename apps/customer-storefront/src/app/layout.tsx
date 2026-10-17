@@ -3,6 +3,8 @@ import './globals.css';
 import Script from 'next/script';
 import { AuthProvider } from '@spaceborn/web-core/auth';
 import { StoreProvider } from '../context/StoreContext';
+import { StorefrontProvider } from '../context/StorefrontConfig';
+import { THEME_VARS_KEY } from '../lib/themeStorage';
 import { NextAppShell } from '../components/NextAppShell';
 
 export const metadata: Metadata = {
@@ -29,6 +31,10 @@ export const metadata: Metadata = {
   },
 };
 
+// Applies the last published theme before first paint, so returning visitors never see the
+// default colours flash. Only well-formed colour variables are accepted from storage.
+const THEME_BOOT = `try{var v=JSON.parse(localStorage.getItem(${JSON.stringify(THEME_VARS_KEY)})||'null');if(v){for(var k in v){if(/^--color-sb-[a-z-]+$/.test(k)&&/^#[0-9a-fA-F]{6}$/.test(v[k]))document.documentElement.style.setProperty(k,v[k]);}}}catch(e){}`;
+
 export default function RootLayout({
   children,
 }: {
@@ -37,6 +43,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
@@ -44,11 +51,13 @@ export default function RootLayout({
       </head>
       <body suppressHydrationWarning>
         <AuthProvider>
-          <StoreProvider>
-            <NextAppShell>
-              {children}
-            </NextAppShell>
-          </StoreProvider>
+          <StorefrontProvider>
+            <StoreProvider>
+              <NextAppShell>
+                {children}
+              </NextAppShell>
+            </StoreProvider>
+          </StorefrontProvider>
         </AuthProvider>
       </body>
     </html>
