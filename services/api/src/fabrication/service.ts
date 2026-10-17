@@ -332,8 +332,8 @@ export interface JobTransitionInput {
   otp?: string;
 }
 
-export async function transitionJob(input: JobTransitionInput) {
-  await withTransaction(async (c) => {
+export async function transitionJob(input: JobTransitionInput, db?: pg.PoolClient) {
+  const run = async (c: pg.PoolClient) => {
     const { rows } = await c.query(
       `select j.id, j.status, j.customer_id, j.store_id, j.handover_otp,
               p.id as payment_id, p.status as payment_status, p.provider_payment_id, p.amount_paise
@@ -380,8 +380,10 @@ export async function transitionJob(input: JobTransitionInput) {
       });
     }
     await enqueue(c, 'fab_job.status_changed', { jobId: job.id, from, to: input.to });
-  });
-  return getJob(pool, input.jobId, input.actor);
+  };
+  if (db) await run(db);
+  else await withTransaction(run);
+  return getJob(db ?? pool, input.jobId, input.actor);
 }
 
 export async function expireQuotes(batchSize = 50): Promise<number> {

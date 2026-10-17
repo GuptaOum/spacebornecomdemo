@@ -5,7 +5,7 @@ import { currentUser, requireAuth } from '../auth.js';
 import { pool } from '../db/pool.js';
 import { badRequest, parse } from '../errors.js';
 import { MAX_ITEMS_PER_LINE } from '../orders/pricing.js';
-import { getOrder, listCustomerOrders, placeOrder, transitionOrder } from '../orders/service.js';
+import { cancelForCustomer, getOrder, listCustomerOrders, placeOrder } from '../orders/service.js';
 import { deliveryAddress, uuid } from './schemas.js';
 
 export const ordersRouter = Router();
@@ -52,11 +52,6 @@ ordersRouter.get('/:id', async (req, res) => {
 ordersRouter.post('/:id/cancel', async (req, res) => {
   const user = currentUser(req);
   const { reason } = parse(z.object({ reason: z.string().trim().max(300).optional() }), req.body ?? {});
-  const order = await transitionOrder({
-    orderId: parse(uuid, req.params.id),
-    to: 'cancelled',
-    actor: { role: 'customer', uid: user.uid },
-    reason: reason || 'Cancelled by customer',
-  });
+  const order = await cancelForCustomer(parse(uuid, req.params.id), user.uid, reason || 'Cancelled by customer');
   res.json({ order });
 });
