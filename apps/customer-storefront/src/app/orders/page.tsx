@@ -7,6 +7,7 @@ import { api } from '@spaceborn/web-core/api';
 import { useAuth } from '@spaceborn/web-core/auth';
 import { formatDateTime, formatInr, ORDER_STATUS_LABEL } from '@spaceborn/web-core/format';
 import type { Order, OrderStatus, OrderItem } from '@spaceborn/web-core/types';
+import { useDraft } from '@spaceborn/web-core/use-draft';
 import { useLoad } from '@spaceborn/web-core/use-load';
 import { useStore } from '../../context/StoreContext';
 import {
@@ -97,10 +98,11 @@ function ItemReviewForm({
   orderNumber: number;
   onDone: (rating: number, title: string, comment: string) => void;
 }) {
-  const [rating, setRating] = useState(5);
+  const draftKey = `review:order:${orderNumber}:${item.productId}`;
+  const [rating, setRating, clearRating] = useDraft(`${draftKey}:rating`, 5);
   const [hoverRating, setHoverRating] = useState(0);
-  const [title, setTitle] = useState('');
-  const [comment, setComment] = useState('');
+  const [title, setTitle, clearTitle] = useDraft(`${draftKey}:title`, '');
+  const [comment, setComment, clearComment] = useDraft(`${draftKey}:comment`, '');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -122,6 +124,9 @@ function ItemReviewForm({
         },
       });
       onDone(rating, title.trim(), comment.trim());
+      clearRating();
+      clearTitle();
+      clearComment();
     } catch (err: any) {
       setError(err.message || 'Failed to submit review');
     } finally {
@@ -232,7 +237,7 @@ function OrderCard({
   const [cancelling, setCancelling] = useState(false);
   const [copiedOtp, setCopiedOtp] = useState(false);
   const [copiedId, setCopiedId] = useState(false);
-  const [reviewingItemId, setReviewingItemId] = useState<string | null>(null);
+  const [reviewingItemId, setReviewingItemId] = useDraft<string | null>(`orders:reviewing:${order.id}`, null);
   const [reviewedItems, setReviewedItems] = useState<Record<string, { rating: number; title: string }>>({});
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [reordered, setReordered] = useState(false);
@@ -738,8 +743,8 @@ function OrderCard({
 export default function OrdersPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
-  const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'delivered' | 'cancelled'>('all');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [activeFilter, setActiveFilter] = useDraft<'all' | 'active' | 'delivered' | 'cancelled'>('orders:filter', 'all');
+  const [searchQuery, setSearchQuery] = useDraft('orders:search', '');
 
   const orders = useLoad(
     () => (user ? api<{ orders: Order[] }>('/orders').then((r) => r.orders) : Promise.resolve([] as Order[])),
