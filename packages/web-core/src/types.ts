@@ -258,6 +258,8 @@ export interface ProductSubmission {
   categoryId: string;
   categoryName?: string | null;
   brand: string | null;
+  /** Manufacturer part number, if the vendor gave one. */
+  mpn?: string | null;
   mrp: number;
   price: number;
   stock: number;
@@ -277,6 +279,9 @@ export interface SimilarMatch {
   name: string;
   sku: string | null;
   city: string | null;
+  mpn?: string | null;
+  /** Same manufacturer part number as the proposal. */
+  mpnMatch?: boolean;
   score: number;
   textScore: number;
   imageScore: number | null;
