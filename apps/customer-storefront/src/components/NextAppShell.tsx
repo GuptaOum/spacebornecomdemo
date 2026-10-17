@@ -36,6 +36,8 @@ export const NextAppShell: React.FC<{ children: React.ReactNode }> = ({ children
     logoutUser,
     wishlist,
     compareList,
+    cartNotice,
+    clearCartNotice,
   } = useStore();
 
   const handleNavigate = (view: AppView) => {
@@ -163,6 +165,8 @@ export const NextAppShell: React.FC<{ children: React.ReactNode }> = ({ children
           closeCart();
           router.push('/checkout');
         }}
+        notice={cartNotice}
+        onDismissNotice={clearCartNotice}
       />
 
       {/* Quick View Modal */}

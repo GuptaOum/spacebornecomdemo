@@ -411,7 +411,13 @@ function OrderCard({
           <div className="p-3.5 sm:p-4 rounded-xl bg-rose-50/70 border border-rose-200/60 text-xs text-rose-800 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-              <span>This order is cancelled. No payment was charged.</span>
+              <span>
+                {order.paymentStatus === 'refunded'
+                  ? 'This order is cancelled. The refund has been sent to your payment method.'
+                  : order.paymentStatus === 'captured' || order.paymentStatus === 'refund_pending'
+                    ? 'This order is cancelled. A refund is on its way to your payment method.'
+                    : 'This order is cancelled. No payment was charged.'}
+              </span>
             </div>
             <button
               onClick={handleReorder}
@@ -597,9 +603,6 @@ function OrderCard({
                   : order.paymentStatus?.replace('_', ' ') || 'Paid'}
               </b>
             </span>
-            {order.status === 'delivered' && (
-              <span className="text-[#0c831f] font-semibold">✓ GST Compliant Invoice</span>
-            )}
           </div>
           {order.cancelReason && !order.cancelReason.toLowerCase().includes('payment') && !order.cancelReason.toLowerCase().includes('time') && (
             <p className="p-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 font-medium">
@@ -920,7 +923,7 @@ export default function OrdersPage() {
           <div className="space-y-1">
             <h3 className="text-base font-extrabold text-[#34222e]">You haven't placed any hardware orders yet</h3>
             <p className="text-xs text-[#7a6274] max-w-md mx-auto">
-              Get genuine microcontrollers, LiDAR sensors, gear motors, and lab essentials delivered to your bench in under 15 minutes.
+              Microcontrollers, sensors, gear motors and lab essentials, sent by the nearest shop that has them.
             </p>
           </div>
           <button
